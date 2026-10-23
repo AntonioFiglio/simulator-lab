@@ -53,7 +53,6 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [name, setName] = useState("Meu laboratório");
-  const [password, setPassword] = useState("");
   const [menu, setMenu] = useState(false);
   const [confirmation, setConfirmation] = useState("");
   const [busy, setBusy] = useState(false);
@@ -101,20 +100,13 @@ export default function App() {
           <Field label="Nome do workspace">
             <input value={name} onChange={(e) => setName(e.target.value)} />
           </Field>
-          <Field label="Senha de acesso (se configurada)">
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </Field>
           <button
             className="primary"
             disabled={busy || !name.trim()}
             onClick={async () => {
               setBusy(true);
               try {
-                await api("session", { name, password });
+                await api("session", { name });
                 await refresh();
               } catch (e) {
                 setError((e as Error).message);

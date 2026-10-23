@@ -83,7 +83,7 @@ Motor `heuristic-evidence-v1`: pontuação base 0,50; categoria observada +0,20;
 - Identificadores pessoais de cliente e pedido são substituídos por HMAC específico do workspace. Colunas não mapeadas são descartadas após a confirmação. A prévia bruta é criptografada, expira em uma hora e é removida na próxima consulta de estado/importação ou confirmação.
 - Jobs executam no processo Node com `after`, checkpoint de lote e polling. O retorno ao status da execução retoma jobs interrompidos; falhas parciais têm ação explícita de retomada. Reexecução usa a mesma versão/seed e não duplica decisões. Não é uma fila distribuída: execute **uma réplica** do servidor no MVP.
 - A exclusão do workspace é bloqueada enquanto seu worker está ativo, evitando recriação acidental de registros. Os registros são removidos do banco ativo; backups e retenção devem ser administrados pelo operador.
-- Para disponibilização externa: configure as credenciais do Supabase, `SIMULA_ENCRYPTION_KEY`, `SIMULA_ACCESS_PASSWORD` e proxy HTTPS. O MVP não deve ser publicado como serviço multiusuário de produção sem autenticação recuperável, gestão de papéis e fila distribuída.
+- Acesso sem login ou senha: basta nomear e abrir o laboratório. O cookie anônimo mantém os dados isolados por workspace neste navegador. Para disponibilização externa, configure as credenciais do Supabase, `SIMULA_ENCRYPTION_KEY` e HTTPS.
 
 ## IA e voz na nova oferta
 

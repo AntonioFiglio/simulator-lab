@@ -6,7 +6,6 @@ import {
   randomBytes,
   randomUUID,
   createHash,
-  timingSafeEqual,
 } from "node:crypto";
 import { z } from "zod";
 import { get, put, list, remove } from "@/lib/db";
@@ -56,21 +55,6 @@ async function handle(
     let token = req.cookies.get("simula_session")?.value;
     if (action === "session" && req.method === "POST") {
       const body = await req.json();
-      if (process.env.SIMULA_ACCESS_PASSWORD) {
-        const actual = Buffer.from(digest(String(body.password ?? ""))),
-          expected = Buffer.from(digest(process.env.SIMULA_ACCESS_PASSWORD));
-        if (!timingSafeEqual(actual, expected))
-          return NextResponse.json(
-            { error: "Senha de acesso inválida." },
-            { status: 401 },
-          );
-      } else if (
-        process.env.NODE_ENV === "production" &&
-        !["localhost", "127.0.0.1"].includes(req.nextUrl.hostname)
-      )
-        throw Error(
-          "Configure SIMULA_ACCESS_PASSWORD antes de expor a aplicação.",
-        );
       token = randomBytes(32).toString("hex");
       const workspace = digest(token);
       await put(workspace, "workspace", "info", {
