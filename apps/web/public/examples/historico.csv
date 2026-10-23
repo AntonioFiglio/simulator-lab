@@ -1,0 +1,4 @@
+customer_id,order_id,purchased_at,product_name,quantity,unit_price,category
+ficticio-001,pedido-001,2026-10-01,Conteúdo digital,1,49.90,Bem-estar
+ficticio-001,pedido-002,2026-10-10,Conteúdo digital,2,39.90,Bem-estar
+ficticio-002,pedido-003,2026-08-02,Consultoria,1,250.00,Educação

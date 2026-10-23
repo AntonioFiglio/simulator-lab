@@ -1,0 +1,113 @@
+# Simula — Consumer Simulation Lab
+
+MVP do simulador comercial com persistência exclusiva no Supabase descrito em `product.md`, `develop.md` e `agents.md`. Duas experiências separadas: **Financeiro / Hackathon 15** e **Consumer Lab**.
+
+**FÓRMULAS OFICIAIS PENDENTES.** Os documentos não contêm as fórmulas da organização. O motor disponível é demonstrativo e não representa homologação do desafio. A interpretação por IA externa depende da configuração de um provedor; sem configuração, a interface identifica explicitamente a estruturação local.
+
+## Executar
+
+Requer Node.js 22, npm e um projeto Supabase hospedado (plano Free compatível).
+
+1. Crie um projeto no Supabase e execute `supabase/migrations/202610230001_simula_records.sql` no SQL Editor. A migration é reaplicável e cria a tabela, o trigger e as permissões.
+2. Copie `.env.example` para `apps/web/.env.local`.
+3. Configure `SUPABASE_URL`, `SUPABASE_SECRET_KEY` (ou a chave legada `SUPABASE_SERVICE_ROLE_KEY`) e `SIMULA_ENCRYPTION_KEY`. Gere a chave de criptografia com `openssl rand -hex 32`; preserve-a durante todos os deploys.
+4. Nunca use o prefixo `NEXT_PUBLIC_` para as chaves de servidor.
+
+```sh
+npm ci
+npm run dev
+```
+
+Se preferir Yarn, use `yarn install` e `yarn dev`. A configuração `.yarnrc.yml` usa `node-modules` para compatibilidade com o Turbopack.
+
+Abra http://127.0.0.1:3000. Crie um workspace e use **Importar dados → Carregar demonstração** para trabalhar com 5.000 perfis fictícios. A base demonstrativa é armazenada no seu projeto Supabase. Nenhum perfil é enviado a provedores de IA.
+
+```sh
+npm run typecheck
+npm run build
+npm start
+```
+
+Pare `dev` antes de iniciar `start`. Os scripts mantêm o servidor restrito ao endereço local; a persistência é remota. Sem configuração válida, a API retorna erro 503 explicativo e não cria um banco alternativo.
+
+## Jornada disponível
+
+1. **Financeiro:** informe um produto, um mês, preço unitário, quantidade vendida e custos totais mensais. Ajuste desconto e aumento de custos. Veja três cenários lado a lado, fórmulas, substituições, resultados e diferenças absolutas/relativas. Salve e recarregue análises.
+2. **Importação:** envie CSV, XLSX ou XML; revise a prévia e o mapeamento; escolha Brasil ou internacional. Exemplos fictícios nos três formatos estão disponíveis na tela e em `apps/web/public/examples/`.
+3. **População:** consulte qualidade, identificação, duplicatas, rejeições, segmentos e perfis com histórico. Transações sem cliente persistente aparecem agregadas por categoria e não são transformadas em indivíduos inventados.
+4. **Oferta:** preencha descrição livre, tipo, categoria, preço, custo opcional, benefícios e público pretendido. Estruture, confira lacunas/hipóteses e confirme a revisão humana.
+5. **Simulação:** escolha base, oferta revisada, população/segmentos e parâmetros. O motor processa lotes de 250 e registra uma decisão por cliente por cenário. A base demonstrativa gera **15.000 decisões: 5.000 × 3 cenários**.
+6. **Laboratório:** mundo isométrico original, até 36 avatares por amostra, reprodução das decisões persistidas, cartões de inventário apenas para aceitação, seleção/inspector, pausa, velocidade, foco e alternativa tabular. A seed controla a ordem visual; as decisões são determinísticas.
+7. **Resultados:** totais, aceitação sintética, comparação dos cenários, distribuição por segmento, cobertura, fontes e exportação JSON.
+8. **Privacidade:** informações de retenção e exclusão confirmada de todos os registros do workspace.
+
+## Financeiro
+
+O custo informado é o **total mensal**, não o custo por unidade. A quantidade permanece fixa nos três cenários e não depende da população simulada.
+
+Regras provisórias:
+
+- Receita = preço × quantidade.
+- Resultado = receita − custos totais mensais.
+- Desconto altera somente o preço; aumento de custos altera somente o custo mensal.
+- Δ absoluto = cenário − atual.
+- Δ relativo = Δ absoluto ÷ |atual| × 100, indefinido quando atual = 0.
+- Arredondamento monetário a centavos; preço do cenário arredondado antes do cálculo da receita.
+
+O contrato `FinancialRule` em `packages/financial-engine/index.ts` permite substituir as fórmulas por implementação tipada, com versão, indicação oficial e memória de cálculo. Não usa `eval` nem executa fórmulas recebidas do navegador. Quando as fórmulas forem fornecidas, substituir o adaptador e ajustar os rótulos de status; não basta mudar `official` para true.
+
+## Dados e inferências
+
+Limites: 10 MB, 50.000 linhas e 100 colunas. XLSX importa a primeira planilha, rejeita células com fórmulas e limita a expansão do ZIP a 40 MB. XML rejeita DTD e entidades externas. CSV exige cabeçalhos. Datas ISO são aceitas em ambos os formatos regionais. Quantidades positivas e preços não negativos são obrigatórios. IDs são normalizados com NFKC e espaços externos removidos, preservando maiúsculas/minúsculas e zeros à esquerda.
+
+Duplicata é a repetição exata de cliente/pedido/data/produto/quantidade/preço. Se o arquivo contiver linhas legitimamente idênticas, consolide-as na origem. Não se infere que IDs distintos correspondem à mesma pessoa.
+
+Recência é calculada em relação à última data da base. Segmentos usam prioridade explícita: inatividade, diversidade de categorias, ticket alto, recorrência e faixa habitual. Uma base homogênea pode ter menos segmentos; o sistema não força grupos artificiais para atingir cinco. Não deriva demografia ou personalidade.
+
+Motor `heuristic-evidence-v1`: pontuação base 0,50; categoria observada +0,20; preço dentro da faixa observada +0,15; preço acima de 1,5× do máximo observado −0,35; pelo menos três pedidos +0,10; inatividade superior a 90 dias −0,25. Aceita a partir de 0,70; rejeita até 0,35; demais indecisos. Sem categoria ou faixa válida, indeciso. Essas regras são premissas exploratórias, **não probabilidades calibradas**. Custo não altera aceitação quando o preço ao consumidor é mantido.
+
+## Persistência, segurança e operação
+
+- Supabase PostgreSQL acessado por `@supabase/supabase-js` exclusivamente no servidor. Banco embutido, drivers de conexão direta e fallback local foram removidos. A estrutura é criada pela migration versionada, não durante requisições.
+- Tabela `public.simula_records` com RLS habilitada e sem permissões para `anon`/`authenticated`. Somente o backend usa a chave secret/service role; a autorização e o filtro por workspace continuam obrigatórios em todas as operações. A chave administrativa ultrapassa RLS, portanto nunca é entregue ao navegador.
+- Listagem paginada por cursor evita truncamento no limite da API do Supabase. Falhas de configuração, migration e conectividade são apresentadas como indisponibilidade, nunca como uma lista vazia.
+- Registros JSON tipados por domínio, indexados por workspace, tipo e ID. Dados de decisões/eventos são gravados por lote. Eventos só são produzidos após leitura de confirmação das decisões persistidas.
+- Conteúdo dos registros criptografado com AES-256-GCM antes do envio ao Supabase. `SIMULA_ENCRYPTION_KEY` é obrigatória e não é gerada nem lida de arquivo pelo aplicativo. Guarde-a em secret manager separado do banco e preserve-a em backups; perdê-la torna os registros ilegíveis.
+- Cookie de sessão aleatório de 256 bits, HttpOnly, SameSite=Strict, Secure em HTTPS. Cada sessão é proprietária de um workspace isolado. Consultas e exports exigem essa sessão. Não há recuperação de cookie, convite de membros ou colaboração com múltiplos papéis nesta versão.
+- Identificadores pessoais de cliente e pedido são substituídos por HMAC específico do workspace. Colunas não mapeadas são descartadas após a confirmação. A prévia bruta é criptografada, expira em uma hora e é removida na próxima consulta de estado/importação ou confirmação.
+- Jobs executam no processo Node com `after`, checkpoint de lote e polling. O retorno ao status da execução retoma jobs interrompidos; falhas parciais têm ação explícita de retomada. Reexecução usa a mesma versão/seed e não duplica decisões. Não é uma fila distribuída: execute **uma réplica** do servidor no MVP.
+- A exclusão do workspace é bloqueada enquanto seu worker está ativo, evitando recriação acidental de registros. Os registros são removidos do banco ativo; backups e retenção devem ser administrados pelo operador.
+- Para disponibilização externa: configure as credenciais do Supabase, `SIMULA_ENCRYPTION_KEY`, `SIMULA_ACCESS_PASSWORD` e proxy HTTPS. O MVP não deve ser publicado como serviço multiusuário de produção sem autenticação recuperável, gestão de papéis e fila distribuída.
+
+## IA opcional
+
+Copie `.env.example` para `apps/web/.env.local` e configure `OFFER_AI_URL`, `OFFER_AI_KEY` e `OFFER_AI_MODEL`. Reinicie o servidor. O endpoint deve aceitar `messages`, `response_format: {type: "json_object"}`, `temperature` e `max_tokens`, retornando `choices[0].message.content` com JSON contendo `inferredHypotheses` e `unknowns`.
+
+O contrato `OfferProvider` é substituível. Apenas os campos escritos na oferta são enviados. Perfis, IDs e históricos não são enviados; não escreva PII na oferta. Há timeout de 20 segundos e limite de saída de 700 tokens por interpretação. A resposta passa por validação de esquema e revisão humana. Falha do provedor é visível, sem substituição silenciosa por suposta IA. Credenciais não são fornecidas nem incluídas neste repositório.
+
+## Organização
+
+```text
+apps/web/app/                   aplicação Next.js e API
+apps/web/components/            formulários, dashboards e inspector
+apps/web/components/lab-3d/     cena original e estado de reprodução
+apps/web/lib/                   cliente Supabase, persistência, criptografia e dados fictícios
+supabase/migrations/            estrutura PostgreSQL e políticas de acesso
+packages/contracts/            contratos de domínio
+packages/financial-engine/     cálculo independente e adaptador de fórmulas
+packages/ingestion/             parsers, validação e pseudonimização
+packages/profiling/             RFM e segmentação
+packages/offer-understanding/   interpretação e contrato do provedor
+packages/simulation-core/      decisão determinística e eventos
+services/workers/              lotes, checkpoints e retomada
+```
+
+Rotas: `/`, `/financials`, `/data/import`, `/customers`, `/offers/new`, `/simulations/new`, `/simulations/[id]/lab`, `/simulations/[id]/results`, `/simulations/[id]/financials`, `/settings/privacy`. O roteador catch-all mantém essas URLs usando componentes pequenos por fluxo.
+
+## Decisões de escopo
+
+O conflito na ordem de execução dos documentos foi resolvido priorizando o financeiro, conforme `agents.md` e a entrega central do desafio 15. A ausência das fórmulas oficiais é mantida visível. O 3D utiliza primitivas originais, sem assets, marca ou personagens do Habbo. Não há campanhas, pagamentos ou contato com compradores.
+
+Permanecem dependências externas para a demonstração integral: as fórmulas fornecidas pela organização e um provedor de IA configurado. Com o Supabase configurado, a aplicação funciona sem fórmulas oficiais e sem IA externa, com esses limites apresentados explicitamente ao usuário. Supabase Auth, Storage e Realtime não são necessários para esta migração: a sessão proprietária existente continua autorizando os requests, uploads são normalizados pelo servidor e o replay continua usando polling.
+
+A migração de infraestrutura substitui a recomendação genérica PostgreSQL/Drizzle dos documentos originais pela instrução posterior do usuário: Supabase exclusivo. Dados de instalações locais anteriores não são copiados automaticamente para o serviço remoto.
