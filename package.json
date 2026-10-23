@@ -6,7 +6,8 @@
     "dev": "next dev apps/web --hostname 127.0.0.1",
     "build": "next build apps/web",
     "start": "next start apps/web --hostname 127.0.0.1",
-    "typecheck": "tsc --noEmit -p apps/web/tsconfig.json"
+    "typecheck": "tsc --noEmit -p apps/web/tsconfig.json",
+    "test": "node --conditions=react-server --import tsx --test tests/*.test.ts"
   },
   "dependencies": {
     "@react-three/drei": "^10.0.0",
