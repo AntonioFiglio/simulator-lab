@@ -139,3 +139,5 @@ npx tsx tests/ui-smoke.ts
 ```
 
 Os testes de navegador usam ações controladas e são distintos de execuções com IA externa. As verificações de isolamento/persistência em memória não comprovam conectividade com Supabase. Consulte `VALIDATION.md` para os resultados efetivamente obtidos e pendências. O fluxo npm foi validado; a instalação Yarn ainda precisa ser verificada.
+
+Smoke opcional contra o Supabase configurado (cria dados em workspaces novos): com o servidor de teste em `127.0.0.1:3007`, modo de agentes habilitado e configuração de criptografia correspondente, execute `node --env-file=.simula/test.env --conditions=react-server --import tsx tests/live-smoke.ts`. Para conferir persistência após reinício, reinicie o servidor com o modo desativado e execute `npx tsx tests/live-ui.ts`. Esses scripts não fazem parte de `npm test`; dependem de configuração explícita, guardam uma sessão de teste local e não devem ser apontados para sessões de usuários existentes.
