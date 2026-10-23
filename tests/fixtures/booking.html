@@ -1,0 +1,20 @@
+<!doctype html><html lang="pt-BR"><meta charset="utf-8"><title>Agenda de teste</title>
+<h1>Agenda de teste</h1><p>Dados fictícios. Sem envio de mensagens.</p>
+<aside id="guide" hidden>Etapas: 1. Salvar serviço. 2. Salvar disponibilidade. 3. Confirmar reserva.</aside>
+<form id="service"><label>Serviço <input name="service" required></label><label>Duração <input name="duration" type="number" min="1" required></label><button>Salvar serviço</button></form>
+<form id="availability"><label>Horário disponível <input name="availability" type="time" required></label><button>Salvar disponibilidade</button></form>
+<form id="booking"><label>Cliente <input name="customer" required></label><label>Horário da reserva <input name="time" type="time" required></label><button>Confirmar reserva</button></form>
+<p id="message" role="status"></p>
+<script>
+const state={service:'',duration:0,availability:'',bookings:[]};
+window.fixtureState=state;
+document.querySelector('#guide').hidden=new URLSearchParams(location.search).get('variant')!=='B';
+for(const form of document.forms) form.onsubmit=e=>{e.preventDefault();const d=Object.fromEntries(new FormData(form));
+if(form.id==='service'){state.service=d.service;state.duration=Number(d.duration);}
+if(form.id==='availability')state.availability=d.availability;
+if(form.id==='booking'){
+if(!state.service||!state.duration||state.availability!==d.time){message.textContent='Confira serviço e disponibilidade.';return;}
+if(!state.bookings.length)state.bookings.push({id:'reservation',customer:d.customer,time:d.time});
+}
+message.textContent='Dados salvos.';};
+</script></html>

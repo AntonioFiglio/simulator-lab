@@ -7,7 +7,8 @@
     "build": "next build apps/web",
     "start": "next start apps/web --hostname 127.0.0.1",
     "typecheck": "tsc --noEmit -p apps/web/tsconfig.json",
-    "test": "node --conditions=react-server --import tsx --test tests/*.test.ts"
+    "test": "node --conditions=react-server --import tsx --test tests/*.test.ts",
+    "agents:run": "tsx services/agents/run.ts"
   },
   "dependencies": {
     "@react-three/drei": "^10.0.0",
@@ -33,6 +34,7 @@
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@types/three": "^0.180.0",
+    "playwright": "^1.62.1",
     "tsx": "^4.20.0",
     "typescript": "^5.9.0"
   }

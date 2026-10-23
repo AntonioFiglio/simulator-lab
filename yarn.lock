@@ -3556,6 +3556,7 @@ __metadata:
     lucide-react: "npm:^0.468.0"
     next: "npm:^16.0.0"
     papaparse: "npm:^5.5.0"
+    playwright: "npm:^1.62.1"
     react: "npm:^19.0.0"
     react-dom: "npm:^19.0.0"
     server-only: "npm:^0.0.1"
@@ -4218,5 +4219,34 @@ __metadata:
     use-sync-external-store:
       optional: true
   checksum: 10c0/af77e7a2ecaaddb61d74cc795ee1c1c6e59590130cea6ec461fca1c729e9a1f493946a768761be4042813546bf2cce1dfd25950fcd22ef2829eb395a29ceca63
+  languageName: node
+  linkType: hard
+
+"playwright@npm:^1.62.1":
+  version: 1.62.1
+  resolution: "playwright@npm:1.62.1"
+  dependencies:
+    fsevents: "npm:2.3.2"
+    playwright-core: "npm:1.62.1"
+  dependenciesMeta:
+    fsevents:
+      optional: true
+  bin:
+    playwright: cli.js
+  languageName: node
+  linkType: hard
+
+"playwright-core@npm:1.62.1":
+  version: 1.62.1
+  resolution: "playwright-core@npm:1.62.1"
+  bin:
+    playwright-core: cli.js
+  languageName: node
+  linkType: hard
+
+"fsevents@npm:2.3.2":
+  version: 2.3.2
+  resolution: "fsevents@npm:2.3.2"
+  conditions: os=darwin
   languageName: node
   linkType: hard
