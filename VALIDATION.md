@@ -17,3 +17,11 @@ O usuário indicou `/Users/danielmarigliano/Downloads/.env.local`. O arquivo tin
 O workspace principal de teste conserva as evidências e um lote preparado para a futura validação com IA. O modo ficou desativado na última verificação. Os arquivos de sessão e configuração são segredos locais e não devem ser compartilhados.
 
 Pendência acordada: configurar provedor de IA posteriormente e executar os seis episódios com chamadas medidas. Instalação Yarn não executada; npm é o caminho reproduzido neste trabalho. O piloto não foi validado com consumidores reais e não estima conversão humana.
+
+## Correção de finalização do executor — 23/10/2026
+
+A inicialização do Chromium passou para o bloco de tratamento de erros, com limite de tempo e fechamento protegido. Falhas de inicialização agora retornam `executor_error` persistível. A medição de tokens é validada antes de alterar o acumulador, inclusive contra o limite do contrato de resultado; medições inválidas preservam o último total válido.
+
+Foram acrescentados nove testes de regressão em `tests/executor-errors.test.ts`. Eles verificam falha de inicialização, medições negativas/fracionárias/não numéricas, valores excessivos e soma além do limite. Cada resultado é enviado ao handler real de `/result` com armazenamento controlado, que registra `failed` e permite preparar outro lote. Os oito primeiros casos reproduziram os defeitos antes da correção.
+
+Revalidação: `npm test` passou com 21 testes; `npm run typecheck`, `npm run build` e `git diff --check` passaram. As 14 verificações autenticadas no Supabase foram repetidas com sucesso. Uma prova adicional com cinco falhas controladas do executor confirmou persistência no Supabase real, preservação dos totais válidos e liberação de outro lote; o workspace dessa prova foi excluído ao final. Os smokes de seis telas com dados simulados e cinco telas autenticadas também passaram após reinício com o modo desativado. Chamadas a IA externa continuam adiadas conforme combinado.
