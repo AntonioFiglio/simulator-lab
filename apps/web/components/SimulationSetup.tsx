@@ -26,7 +26,7 @@ export default function Setup({
   if (!datasets.length || !offers.length)
     return (
       <Empty title="Prepare sua próxima simulação">
-        <p>Você precisa de uma base importada e uma oferta revisada.</p>
+        Você precisa de uma base importada e uma oferta revisada.
         <button
           className="primary"
           onClick={() =>
