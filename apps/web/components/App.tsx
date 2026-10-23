@@ -206,7 +206,7 @@ export default function App() {
             <div>
               <dt>Armazenamento</dt>
               <dd>
-                Supabase (PostgreSQL); conteúdo criptografado pelo servidor
+                Supabase (PostgreSQL); dados isolados por workspace
               </dd>
             </div>
             <div>

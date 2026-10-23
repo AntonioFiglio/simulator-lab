@@ -1,5 +1,5 @@
 import "server-only";
-import { encrypt, decrypt } from "./encryption";
+import { encodeRecord, decodeRecord } from "./storage-codec";
 import { supabaseAdmin, storageFailure } from "./supabase";
 import type { Json } from "./supabase.types";
 
@@ -19,7 +19,7 @@ export async function put(
   const { error } = await supabaseAdmin()
     .from(table)
     .upsert(
-      { workspace, kind, id, data: encrypt(data) },
+      { workspace, kind, id, data: encodeRecord(data) },
       { onConflict: "workspace,kind,id" },
     );
   if (error) storageFailure(error);
@@ -38,7 +38,7 @@ export async function get<T>(
     .eq("id", id)
     .maybeSingle();
   if (error) storageFailure(error);
-  return data ? decrypt<T>(data.data) : undefined;
+  return data ? decodeRecord<T>(data.data) : undefined;
 }
 export async function list<T>(workspace: string, kind: string): Promise<T[]> {
   scope(workspace, kind);
@@ -65,7 +65,7 @@ export async function list<T>(workspace: string, kind: string): Promise<T[]> {
       (a, b) =>
         a.created_at.localeCompare(b.created_at) || a.id.localeCompare(b.id),
     )
-    .map((row) => decrypt<T>(row.data));
+    .map((row) => decodeRecord<T>(row.data));
 }
 export async function remove(workspace: string, kind?: string) {
   scope(workspace, kind);

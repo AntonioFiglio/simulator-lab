@@ -10,7 +10,7 @@ Requer Node.js 22, npm e um projeto Supabase hospedado (plano Free compatível).
 
 1. Crie um projeto no Supabase e execute `supabase/migrations/202610230001_simula_records.sql` no SQL Editor. A migration é reaplicável e cria a tabela, o trigger e as permissões.
 2. Copie `.env.example` para `apps/web/.env.local`.
-3. Configure `SUPABASE_URL`, `SUPABASE_SECRET_KEY` (ou a chave legada `SUPABASE_SERVICE_ROLE_KEY`) e `SIMULA_ENCRYPTION_KEY`. Gere a chave de criptografia com `openssl rand -hex 32`; preserve-a durante todos os deploys.
+3. Configure `SUPABASE_URL`, `SUPABASE_SECRET_KEY` (ou a chave legada `SUPABASE_SERVICE_ROLE_KEY`). Não é necessária uma chave de criptografia para novos registros.
 4. Nunca use o prefixo `NEXT_PUBLIC_` para as chaves de servidor.
 
 ```sh
@@ -78,12 +78,12 @@ Motor `heuristic-evidence-v1`: pontuação base 0,50; categoria observada +0,20;
 - Tabela `public.simula_records` com RLS habilitada e sem permissões para `anon`/`authenticated`. Somente o backend usa a chave secret/service role; a autorização e o filtro por workspace continuam obrigatórios em todas as operações. A chave administrativa ultrapassa RLS, portanto nunca é entregue ao navegador.
 - Listagem paginada por cursor evita truncamento no limite da API do Supabase. Falhas de configuração, migration e conectividade são apresentadas como indisponibilidade, nunca como uma lista vazia.
 - Registros JSON tipados por domínio, indexados por workspace, tipo e ID. Dados de decisões/eventos são gravados por lote. Eventos só são produzidos após leitura de confirmação das decisões persistidas.
-- Conteúdo dos registros criptografado com AES-256-GCM antes do envio ao Supabase. `SIMULA_ENCRYPTION_KEY` é obrigatória e não é gerada nem lida de arquivo pelo aplicativo. Guarde-a em secret manager separado do banco e preserve-a em backups; perdê-la torna os registros ilegíveis.
+- Novos registros são armazenados como JSON no Supabase, sem criptografia adicional da aplicação. Registros antigos AES-256-GCM continuam legíveis quando a chave original `SIMULA_ENCRYPTION_KEY` está configurada; sem ela, a leitura desses registros retorna erro explícito, sem apagar ou substituir dados.
 - Cookie de sessão aleatório de 256 bits, HttpOnly, SameSite=Strict, Secure em HTTPS. Cada sessão é proprietária de um workspace isolado. Consultas e exports exigem essa sessão. Não há recuperação de cookie, convite de membros ou colaboração com múltiplos papéis nesta versão.
-- Identificadores pessoais de cliente e pedido são substituídos por HMAC específico do workspace. Colunas não mapeadas são descartadas após a confirmação. A prévia bruta é criptografada, expira em uma hora e é removida na próxima consulta de estado/importação ou confirmação.
+- Identificadores pessoais de cliente e pedido são substituídos por HMAC específico do workspace. Colunas não mapeadas são descartadas após a confirmação. A prévia bruta é armazenada no workspace, expira em uma hora e é removida na próxima consulta de estado/importação ou confirmação.
 - Jobs executam no processo Node com `after`, checkpoint de lote e polling. O retorno ao status da execução retoma jobs interrompidos; falhas parciais têm ação explícita de retomada. Reexecução usa a mesma versão/seed e não duplica decisões. Não é uma fila distribuída: execute **uma réplica** do servidor no MVP.
 - A exclusão do workspace é bloqueada enquanto seu worker está ativo, evitando recriação acidental de registros. Os registros são removidos do banco ativo; backups e retenção devem ser administrados pelo operador.
-- Acesso sem login ou senha: basta nomear e abrir o laboratório. O cookie anônimo mantém os dados isolados por workspace neste navegador. Para disponibilização externa, configure as credenciais do Supabase, `SIMULA_ENCRYPTION_KEY` e HTTPS.
+- Acesso sem login ou senha: basta nomear e abrir o laboratório. O cookie anônimo mantém os dados isolados por workspace neste navegador. Para disponibilização externa, configure as credenciais do Supabase e HTTPS.
 
 ## IA e voz na nova oferta
 
@@ -91,7 +91,7 @@ Configure `OPENAI_API_KEY` em `apps/web/.env.local` e reinicie o servidor. A con
 
 Roteiro: ideia/problema/público → proposta → preço → revisão. O chat aproveita respostas anteriores e evita prolongar a conversa por custo ou público desconhecidos. A ficha pode ser corrigida diretamente; cada edição remove o aceite anterior. Confirmação cria uma oferta revisada e abre a configuração da simulação.
 
-Conversa e rascunho ficam criptografados no Supabase, isolados por workspace. Edite a ficha e envie uma mensagem ou confirme para persistir ajustes manuais. Nova conversa substitui o rascunho, sem apagar ofertas confirmadas. Áudio não é armazenado pela aplicação: é enviado à OpenAI para transcrição, apresentada ao usuário antes de enviar ao chat. Não inclua PII; históricos de clientes não são enviados.
+Conversa e rascunho ficam armazenados como JSON no Supabase, isolados por workspace. Edite a ficha e envie uma mensagem ou confirme para persistir ajustes manuais. Nova conversa substitui o rascunho, sem apagar ofertas confirmadas. Áudio não é armazenado pela aplicação: é enviado à OpenAI para transcrição, apresentada ao usuário antes de enviar ao chat. Não inclua PII; históricos de clientes não são enviados.
 
 Limites: 60 s por gravação na interface, 8 MB por áudio, 4.000 caracteres por mensagem, 20 interações por conversa, 60 chamadas/hora/workspace e timeout de 30 s. Falhas preservam o texto para nova tentativa. Sem microfone, digite; sem chave, use a ficha manual. Execute uma réplica do servidor.
 
@@ -105,7 +105,7 @@ Referências: [Structured Outputs](https://developers.openai.com/api/docs/guides
 apps/web/app/                   aplicação Next.js e API
 apps/web/components/            formulários, dashboards e inspector
 apps/web/components/lab-3d/     cena original e estado de reprodução
-apps/web/lib/                   cliente Supabase, persistência, criptografia e dados fictícios
+apps/web/lib/                   cliente Supabase, persistência, leitura de registros legados e dados fictícios
 supabase/migrations/            estrutura PostgreSQL e políticas de acesso
 packages/contracts/            contratos de domínio
 packages/financial-engine/     cálculo independente e adaptador de fórmulas
@@ -154,4 +154,4 @@ npx tsx tests/ui-smoke.ts
 
 Os testes de navegador usam ações controladas e são distintos de execuções com IA externa. As verificações de isolamento/persistência em memória não comprovam conectividade com Supabase. Consulte `VALIDATION.md` para os resultados efetivamente obtidos e pendências. O fluxo npm foi validado; a instalação Yarn ainda precisa ser verificada.
 
-Smoke opcional contra o Supabase configurado (cria dados em workspaces novos): com o servidor de teste em `127.0.0.1:3007`, modo de agentes habilitado e configuração de criptografia correspondente, execute `node --env-file=.simula/test.env --conditions=react-server --import tsx tests/live-smoke.ts`. Para conferir persistência após reinício, reinicie o servidor com o modo desativado e execute `npx tsx tests/live-ui.ts`. Esses scripts não fazem parte de `npm test`; dependem de configuração explícita, guardam uma sessão de teste local e não devem ser apontados para sessões de usuários existentes.
+Smoke opcional contra o Supabase configurado (cria dados em workspaces novos): com o servidor de teste em `127.0.0.1:3007`, modo de agentes habilitado, execute `node --env-file=.simula/test.env --conditions=react-server --import tsx tests/live-smoke.ts`. Para conferir persistência após reinício, reinicie o servidor com o modo desativado e execute `npx tsx tests/live-ui.ts`. Esses scripts não fazem parte de `npm test`; dependem de configuração explícita, guardam uma sessão de teste local e não devem ser apontados para sessões de usuários existentes.
