@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import type { CSSProperties } from "react";
 import {
   api,
   Card,
@@ -11,6 +12,7 @@ import {
   money,
   Notice,
 } from "./ui";
+import { ArrowUpRight, Search, Users } from "lucide-react";
 import type { CustomerProfile, Purchase } from "@packages/contracts";
 export function ProfileDetail({
   datasetId,
@@ -100,6 +102,18 @@ export default function Population({
   const [person, setPerson] = useState("");
   const [error, setError] = useState("");
   const dataset = datasets.find((d) => d.id === selected) ?? datasets.at(-1);
+  const segmentColors = ["#155e55", "#5b9c7b", "#83b69a", "#c6a963", "#8da2c0"];
+  const segmentEntries = dataset
+    ? Object.entries(dataset.segments as Record<string, number>)
+    : [];
+  let accumulated = 0;
+  const compositionStops = segmentEntries.map(([, n], i) => {
+    const start = accumulated;
+    accumulated += dataset?.profileCount
+      ? (n / dataset.profileCount) * 100
+      : 0;
+    return `${segmentColors[i % segmentColors.length]} ${start}% ${accumulated}%`;
+  });
   useEffect(() => {
     if (!dataset) return;
     let active = true;
@@ -131,7 +145,7 @@ export default function Population({
           <p>Segmentos explicáveis, derivados de compras registradas.</p>
         </div>
         <button className="primary" onClick={() => navigate("/offers/new")}>
-          Criar oferta →
+          Criar oferta <ArrowUpRight size={16} />
         </button>
       </div>
       <Field label="Base de dados">
@@ -170,7 +184,7 @@ export default function Population({
         />
         <Metric
           label="Cobertura de identificação"
-          value={`${(((dataset.quality.accepted - dataset.quality.unidentified) / dataset.quality.accepted) * 100).toFixed(1)}%`}
+          value={`${(dataset.quality.accepted ? ((dataset.quality.accepted - dataset.quality.unidentified) / dataset.quality.accepted) * 100 : 0).toFixed(1)}%`}
           detail={`${dataset.quality.unidentified} compras sem cliente`}
         />
         <Metric
@@ -179,24 +193,63 @@ export default function Population({
           detail={`Referência: ${dataset.referenceDate}`}
         />
       </div>
-      <div className="segment-grid">
-        {Object.entries(dataset.segments as Record<string, number>).map(
-          ([s, n]) => (
+      <section
+        className="population-composition"
+        aria-label="Composição da população por segmento"
+      >
+        <div className="composition-visual">
+          <div
+            className="composition-ring"
+            style={{ background: `conic-gradient(${compositionStops.join(", ")})` }}
+            role="img"
+            aria-label={`${segmentEntries.length} segmentos na população`}
+          >
+            <div className="composition-ring-center">
+              <strong>{count(dataset.profileCount)}</strong>
+              <span>perfis</span>
+            </div>
+          </div>
+          <div className="composition-copy">
+            <span className="eyebrow">VISÃO DA BASE</span>
+            <h2>Como a população se distribui</h2>
+            <p>Selecione um segmento para filtrar os perfis.</p>
+          </div>
+        </div>
+        <div className="segment-grid">
+          {segmentEntries.map(([s, n], i) => (
             <button
               key={s}
               className={`segment-card ${segment === s ? "selected" : ""}`}
+              aria-pressed={segment === s}
+              title={`${definitions[s]} Clique para filtrar.`}
+              aria-label={`${s}: ${count(n)} perfis, ${dataset.profileCount ? ((n / dataset.profileCount) * 100).toFixed(0) : 0}% da base. ${definitions[s]}`}
               onClick={() => {
                 setSegment(segment === s ? "" : s);
                 setOffset(0);
               }}
             >
-              <strong>{s}</strong>
-              <span className="metric">{count(n)}</span>
-              <small>{definitions[s]}</small>
+              <span
+                className="segment-swatch"
+                style={
+                  { "--segment-color": segmentColors[i % segmentColors.length] } as CSSProperties
+                }
+                aria-hidden="true"
+              />
+              <span className="segment-label">
+                <strong>{s}</strong>
+                <small>
+                  {dataset.profileCount
+                    ? `${((n / dataset.profileCount) * 100).toFixed(0)}%`
+                    : "—"}
+                </small>
+              </span>
+              <span className="segment-count">
+                {count(n)} <small>perfis</small>
+              </span>
             </button>
-          ),
-        )}
-      </div>
+          ))}
+        </div>
+      </section>
       {dataset.quality.unidentified > 0 && (
         <Card>
           <h2>Transações sem identidade persistente</h2>
@@ -223,16 +276,16 @@ export default function Population({
       <div className={person ? "inspector-layout" : ""}>
         <Card>
           <div className="section-title">
-            <h2>Perfis pseudonimizados</h2>
-            <input
-              placeholder="Buscar ID"
-              aria-label="Buscar perfil"
-              value={q}
-              onChange={(e) => {
-                setQ(e.target.value);
-                setOffset(0);
-              }}
-            />
+            <div className="population-table-title"><span className="section-icon"><Users size={17} /></span><div><h2>Perfis pseudonimizados</h2><small>{count(data.total)} perfis · histórico observado</small></div></div>
+            <label className="profile-search"><Search size={16} /><input
+                placeholder="Buscar perfil"
+                aria-label="Buscar perfil"
+                value={q}
+                onChange={(e) => {
+                  setQ(e.target.value);
+                  setOffset(0);
+                }}
+              /></label>
           </div>
           <div className="table-wrap">
             <table>

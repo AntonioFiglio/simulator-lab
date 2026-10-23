@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Upload, Check, ArrowRight, FlaskConical } from "lucide-react";
+import { Upload, Check, ArrowRight, FlaskConical, FileSpreadsheet, ShieldCheck, Sparkles } from "lucide-react";
 import { api, Card, Field, Notice, Badge, count } from "./ui";
 const fields: Record<string, string> = {
   customer_id: "Identificador do cliente (opcional)",
@@ -59,25 +59,25 @@ export default function DataImport({
         </div>
         <Badge tone="blue">Dados observados</Badge>
       </div>
-      <div className="steps">
-        <span className="active">01 Enviar arquivo</span>
-        <ArrowRight size={16} />
-        <span className={preview ? "active" : ""}>02 Revisar mapeamento</span>
-        <ArrowRight size={16} />
-        <span>03 Gerar perfis</span>
+      <div className="import-steps" aria-label="Etapas da importação">
+        <span className="import-step active"><i>1</i> Enviar arquivo</span>
+        <ArrowRight size={15} />
+        <span className={`import-step ${preview ? "active" : ""}`}><i>2</i> Revisar colunas</span>
+        <ArrowRight size={15} />
+        <span className="import-step"><i>3</i> Gerar perfis</span>
       </div>
       {error && (
         <div role="alert" className="error">
           {error}
         </div>
       )}
-      <Card>
+      <Card className="import-upload-card">
         <label className="dropzone">
-          <Upload size={32} />
+          <span className="upload-icon"><Upload size={25} /></span>
           <h2>
-            {busy ? "Processando arquivo…" : "Traga seu histórico de compras"}
+            {busy ? "Analisando seu arquivo…" : "Adicione seu histórico de compras"}
           </h2>
-          <p>CSV, XLSX ou XML · até 10 MB e 50.000 linhas</p>
+          <p>CSV, XLSX ou XML <span>·</span> até 10 MB <span>·</span> 50.000 linhas</p>
           <input
             type="file"
             accept=".csv,.xlsx,.xml"
@@ -86,18 +86,15 @@ export default function DataImport({
               if (e.target.files?.[0]) load(e.target.files[0]);
             }}
           />
-          <span className="hint">
-            Selecione um arquivo. Nomes, e-mails e documentos pessoais não são
-            necessários.
-          </span>
+          <span className="privacy-hint"><ShieldCheck size={15} /> Use apenas os dados necessários. Nomes e documentos pessoais não são necessários.</span>
         </label>
       </Card>
       {preview && (
         <>
           <Card>
             <div className="section-title">
-              <h2>Confirme o significado de cada coluna</h2>
-              <Badge>{count(preview.total)} linhas</Badge>
+              <div className="import-section-heading"><span className="section-icon"><FileSpreadsheet size={17} /></span><div><h2>Revise os dados encontrados</h2><small>Confirme como cada coluna deve ser interpretada.</small></div></div>
+              <Badge tone="blue">{count(preview.total)} linhas</Badge>
             </div>
             <Field label="Formato dos valores e das datas">
               <select
@@ -134,7 +131,7 @@ export default function DataImport({
             </Notice>
           </Card>
           <Card>
-            <h2>Prévia do arquivo · {preview.name}</h2>
+              <h2>Prévia do arquivo <small className="filename-chip">{preview.name}</small></h2>
             <div className="table-wrap">
               <table>
                 <thead>
@@ -182,12 +179,9 @@ export default function DataImport({
           </Card>
         </>
       )}
-      <Card>
-        <h2>Arquivos de exemplo</h2>
-        <p>
-          Compras fictícias para conferir o fluxo de importação. Selecione o
-          formato internacional no mapeamento.
-        </p>
+      <div className="import-support-grid">
+      <Card className="import-samples">
+        <div className="import-section-heading"><span className="section-icon"><FileSpreadsheet size={17} /></span><div><h2>Experimente um arquivo</h2><small>Dados fictícios para conhecer o fluxo.</small></div></div>
         <div className="example-links">
           {["csv", "xlsx", "xml"].map((ext) => (
             <a
@@ -196,19 +190,17 @@ export default function DataImport({
               href={`/examples/historico.${ext}`}
               download
             >
-              Baixar {ext.toUpperCase()}
+              <DownloadIcon ext={ext} /> {ext.toUpperCase()}
             </a>
           ))}
         </div>
       </Card>
       <Card className="demo-card">
-        <FlaskConical size={28} />
+        <span className="demo-icon"><FlaskConical size={22} /></span>
         <div>
-          <h2>Explore com uma empresa fictícia</h2>
-          <p>
-            5.000 perfis, cinco segmentos e compras demonstrativas. Sempre
-            identificados como fictícios.
-          </p>
+          <div className="demo-kicker"><Sparkles size={13} /> MODO DEMONSTRAÇÃO</div>
+          <h2>Veja a população pronta</h2>
+          <p>5.000 perfis de exemplo, identificados como fictícios.</p>
         </div>
         <button
           disabled={busy}
@@ -225,9 +217,14 @@ export default function DataImport({
             }
           }}
         >
-          Carregar demonstração <ArrowRight size={16} />
+          Carregar demo <ArrowRight size={16} />
         </button>
       </Card>
+      </div>
     </>
   );
+}
+
+function DownloadIcon({ ext }: { ext: string }) {
+  return <span className={`file-type-icon ${ext}`}>{ext === "xlsx" ? "X" : ext === "xml" ? "<" : "≡"}</span>;
 }
