@@ -1,3 +1,5 @@
+import { assertEngineVersion } from "../../../../../packages/simulation-core/version";
+import { handleAgents } from "../../../../../services/agents/api";
 import { NextRequest, NextResponse, after } from "next/server";
 import {
   randomBytes,
@@ -104,6 +106,8 @@ async function handle(
           "X-Content-Type-Options": "nosniff",
         },
       });
+    if (path[0] === "agents")
+      return handleAgents(req, workspace, path.slice(1));
     if (action === "state") {
       const uploads = await list<{ createdAt: number }>(workspace, "upload");
       if (uploads.some((u) => Date.now() - u.createdAt > 3600000))
@@ -359,6 +363,7 @@ async function handle(
           { status: 404 },
         );
       if (req.method === "POST" && path[2] === "resume") {
+        if (sim.status !== "completed") assertEngineVersion(sim.engineVersion);
         after(() => runSimulation(workspace, id));
         return json({ ok: true });
       }
@@ -409,8 +414,10 @@ async function handle(
           },
         );
       }
-      if (sim.status === "ready" || sim.status === "executing")
+      if (sim.status === "ready" || sim.status === "executing") {
+        assertEngineVersion(sim.engineVersion);
         after(() => runSimulation(workspace, id));
+      }
       return json(sim);
     }
     if (action === "privacy/delete" && req.method === "POST") {

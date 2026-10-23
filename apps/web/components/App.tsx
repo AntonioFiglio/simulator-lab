@@ -15,6 +15,7 @@ import {
   X,
   Activity,
 } from "lucide-react";
+import Agents from "./Agents";
 import Financial from "./Financial";
 import DataImport from "./DataImport";
 import Population from "./Population";
@@ -43,6 +44,7 @@ const nav = [
   { path: "/customers", label: "População", icon: Users },
   { path: "/offers/new", label: "Nova oferta", icon: PackagePlus },
   { path: "/simulations/new", label: "Simulações", icon: FlaskConical },
+  { path: "/agents", label: "Agentes piloto", icon: Activity },
 ];
 export default function App() {
   const pathname = usePathname(),
@@ -150,6 +152,7 @@ export default function App() {
   let content;
   if (pathname === "/financials" || match?.[2] === "financials")
     content = <Financial saved={state.financials} onSave={refresh} />;
+  else if (pathname === "/agents") content = <Agents />;
   else if (pathname === "/data/import")
     content = <DataImport refresh={refresh} navigate={navigate} />;
   else if (pathname === "/customers")
@@ -209,7 +212,9 @@ export default function App() {
             </div>
             <div>
               <dt>Armazenamento</dt>
-              <dd>Supabase (PostgreSQL); conteúdo criptografado pelo servidor</dd>
+              <dd>
+                Supabase (PostgreSQL); conteúdo criptografado pelo servidor
+              </dd>
             </div>
             <div>
               <dt>Dados enviados à IA</dt>

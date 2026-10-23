@@ -111,3 +111,33 @@ O conflito na ordem de execução dos documentos foi resolvido priorizando o fin
 Permanecem dependências externas para a demonstração integral: as fórmulas fornecidas pela organização e um provedor de IA configurado. Com o Supabase configurado, a aplicação funciona sem fórmulas oficiais e sem IA externa, com esses limites apresentados explicitamente ao usuário. Supabase Auth, Storage e Realtime não são necessários para esta migração: a sessão proprietária existente continua autorizando os requests, uploads são normalizados pelo servidor e o replay continua usando polling.
 
 A migração de infraestrutura substitui a recomendação genérica PostgreSQL/Drizzle dos documentos originais pela instrução posterior do usuário: Supabase exclusivo. Dados de instalações locais anteriores não são copiados automaticamente para o serviço remoto.
+
+## Piloto de agentes interativos (opcional)
+
+O modo atual continua usando `heuristic-evidence-v1`. A retomada agora recusa motores incompatíveis antes de modificar decisões/checkpoints. Simulações concluídas continuam disponíveis.
+
+Para o piloto, configure `SIMULA_AGENT_MODE=true` em `apps/web/.env.local` e reinicie o servidor. Abra `/agents` em um workspace de teste e prepare o lote: três perfis hipotéticos × duas variantes de uma agenda fictícia. Não há pagamentos, mensagens nem conexão com agendas reais.
+
+Instale o navegador com `npx playwright install chromium`. O executor roda separadamente, a partir da raiz do repositório. Ele usa `OFFER_AI_URL`, `OFFER_AI_KEY` e `OFFER_AI_MODEL` do provedor compatível já descrito acima; o provedor precisa retornar `usage.total_tokens`. Forneça `SIMULA_SESSION` no ambiente do processo com o cookie da sessão de teste (não coloque esse segredo em comandos compartilhados ou commits). Se necessário, defina `SIMULA_BASE_URL` para a porta local utilizada.
+
+```sh
+node --env-file=apps/web/.env.local --import tsx services/agents/run.ts
+```
+
+Execute somente um executor por servidor neste piloto. Cada episódio usa um navegador isolado, até 20 ações, 120 segundos e teto de 12.000 tokens com reserva conservadora antes de chamadas. A página mostra consumo em tokens; valor monetário depende da tarifa do modelo. As capturas ficam em `.simula/agents/` na máquina do executor, e não em URLs públicas. O avaliador verifica o estado final; relatos de conclusão não bastam.
+
+Cancelar na página encerra novos passos e preserva o registro. Desativar o modo impede novos trabalhos e é observado pelos executores entre ações; uma ação em andamento pode terminar antes do cancelamento. Registros permanecem legíveis. Após queda do executor, cancele tentativas interrompidas e prepare outro lote: este piloto não retoma contextos de navegador perdidos. Não apague um workspace durante trabalho ativo.
+
+Validação local:
+
+```sh
+npm test
+npm run typecheck
+npm run build
+# Com o servidor em localhost:3007:
+npx tsx tests/ui-smoke.ts
+```
+
+Os testes de navegador usam ações controladas e são distintos de execuções com IA externa. As verificações de isolamento/persistência em memória não comprovam conectividade com Supabase. Consulte `VALIDATION.md` para os resultados efetivamente obtidos e pendências. O fluxo npm foi validado; a instalação Yarn ainda precisa ser verificada.
+
+Smoke opcional contra o Supabase configurado (cria dados em workspaces novos): com o servidor de teste em `127.0.0.1:3007`, modo de agentes habilitado e configuração de criptografia correspondente, execute `node --env-file=.simula/test.env --conditions=react-server --import tsx tests/live-smoke.ts`. Para conferir persistência após reinício, reinicie o servidor com o modo desativado e execute `npx tsx tests/live-ui.ts`. Esses scripts não fazem parte de `npm test`; dependem de configuração explícita, guardam uma sessão de teste local e não devem ser apontados para sessões de usuários existentes.
