@@ -1,3 +1,7 @@
+import {
+  assertEngineVersion,
+  EngineVersionError,
+} from "../../packages/simulation-core/version";
 import { get, put } from "../../apps/web/lib/db";
 import { decide, eventsFor } from "../../packages/simulation-core";
 import type {
@@ -11,13 +15,19 @@ const jobs = (g.simulaJobs ??= new Set());
 export function workspaceBusy(workspace: string) {
   return [...jobs].some((key) => key.startsWith(workspace));
 }
-export async function runSimulation(workspace: string, id: string) {
+export async function runSimulation(
+  workspace: string,
+  id: string,
+  storage = { get, put },
+) {
+  const { get, put } = storage;
   const lock = workspace + id;
   if (jobs.has(lock)) return;
   jobs.add(lock);
   try {
     const sim = await get<Simulation>(workspace, "simulation", id);
     if (!sim || sim.status === "completed") return;
+    assertEngineVersion(sim.engineVersion);
     const dataset = await get<Dataset>(workspace, "dataset", sim.datasetId);
     if (!dataset) throw Error("Base da simulação indisponível.");
     const profiles = dataset.profiles.filter(
@@ -66,6 +76,7 @@ export async function runSimulation(workspace: string, id: string) {
     sim.status = "completed";
     await put(workspace, "simulation", id, sim);
   } catch (e) {
+    if (e instanceof EngineVersionError) return;
     const sim = await get<Simulation>(workspace, "simulation", id);
     if (sim) {
       sim.status = "partial_failure";

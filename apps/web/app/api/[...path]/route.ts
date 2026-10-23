@@ -1,3 +1,4 @@
+import { assertEngineVersion } from "../../../../../packages/simulation-core/version";
 import { NextRequest, NextResponse, after } from "next/server";
 import {
   randomBytes,
@@ -359,6 +360,7 @@ async function handle(
           { status: 404 },
         );
       if (req.method === "POST" && path[2] === "resume") {
+        if (sim.status !== "completed") assertEngineVersion(sim.engineVersion);
         after(() => runSimulation(workspace, id));
         return json({ ok: true });
       }
@@ -409,8 +411,10 @@ async function handle(
           },
         );
       }
-      if (sim.status === "ready" || sim.status === "executing")
+      if (sim.status === "ready" || sim.status === "executing") {
+        assertEngineVersion(sim.engineVersion);
         after(() => runSimulation(workspace, id));
+      }
       return json(sim);
     }
     if (action === "privacy/delete" && req.method === "POST") {
