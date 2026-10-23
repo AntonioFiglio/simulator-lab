@@ -37,13 +37,14 @@ export default function SimulationView({
   const [segment, setSegment] = useState("");
   const [mode, setMode] = useState("3d");
   const [focus, setFocus] = useState(false);
+  const [loadingBatch, setLoadingBatch] = useState(false);
   const [error, setError] = useState("");
   const [batch, setBatch] = useState<{
     decisions: CustomerDecision[];
     events: SimulationEvent[];
     profiles: CustomerProfile[];
   }>({ decisions: [], events: [], profiles: [] });
-  const { playing, setPlaying, speed, setSpeed, selected, select, restart } =
+  const { playing, setPlaying, speed, setSpeed, selected, select, restart, elapsed, seek } =
     useReplay();
   useEffect(() => {
     let active = true;
@@ -64,12 +65,14 @@ export default function SimulationView({
   }, [id]);
   useEffect(() => {
     let active = true;
-    if (sim?.processed)
+    if (sim?.processed) {
+      setLoadingBatch(true);
       api(`simulation/${id}/replay?scenario=${scenario}&start=${start}`)
         .then((b) => {
-          if (active) setBatch(b);
+          if (active) { setBatch(b); setLoadingBatch(false); }
         })
-        .catch((e) => setError(e.message));
+        .catch((e) => { if (active) { setError(e.message); setLoadingBatch(false); } });
+    }
     return () => {
       active = false;
     };
@@ -79,6 +82,7 @@ export default function SimulationView({
       !segment ||
       batch.profiles.find((p) => p.id === d.customerId)?.segmentId === segment,
   );
+  useEffect(() => { restart(); setFocus(false); }, [id, scenario, start, page, segment, restart]);
   const next = useCallback(() => {
     if (page + 36 < filtered.length) setPage((v) => v + 36);
     else {
@@ -92,6 +96,7 @@ export default function SimulationView({
   const visible = filtered.slice(page, page + 36);
   const chosen = batch.decisions.find((d) => d.customerId === selected);
   const segments = [...new Set(batch.profiles.map((p) => p.segmentId ?? ""))];
+  const sampleTotals = visible.reduce((a, d) => { a[d.decision]++; return a; }, { buy: 0, reject: 0, undecided: 0 });
   return (
     <>
       <div className="page-heading">
@@ -100,7 +105,7 @@ export default function SimulationView({
             CONSUMER LAB / {view === "lab" ? "LABORATÓRIO" : "RESULTADOS"}
           </div>
           <h1>{sim.offer.title}</h1>
-          <p>Explore as reações sintéticas e as evidências de cada perfil.</p>
+          <p>Veja a distribuição das decisões e investigue o que sustenta cada resultado.</p>
         </div>
         <Badge tone={sim.status === "completed" ? "green" : "blue"}>
           {sim.status === "completed"
@@ -160,11 +165,12 @@ export default function SimulationView({
           </button>
         </Card>
       )}
+      <div className="section-title"><h2>População avaliada</h2><span className="muted">Totais do cenário · independentes do replay e do filtro da amostra</span></div>
       <div className="metrics">
         <Metric
           label="Avaliados neste cenário"
           value={count(total)}
-          detail={`Cobertura: ${((total / sim.total) * 100).toFixed(1)}%`}
+          detail={`Cobertura: ${(sim.total ? (total / sim.total) * 100 : 0).toFixed(1)}%`}
         />
         <Metric
           label="Aceitações sintéticas"
@@ -211,13 +217,14 @@ export default function SimulationView({
         </a>
       </div>
       {view === "lab" && (
-        <div className={chosen ? "inspector-layout" : ""}>
+        <div className="simulation-lab-layout">
           <Card className="world-card">
             <div className="world-toolbar">
               <div>
-                <Badge>Replay de decisões persistidas</Badge>
+                <div className="eyebrow">MAPA DE DECISÕES</div>
+                <h2>Uma decisão, um lugar no laboratório.</h2>
                 <p>
-                  Até {visible.length} avatares por amostra de{" "}
+                  {visible.length} perfis nesta amostra de{" "}
                   {count(sim.total)} perfis · lote {Math.floor(start / 250) + 1}
                 </p>
               </div>
@@ -227,21 +234,33 @@ export default function SimulationView({
                 {mode === "3d" ? "Usar tabela" : "Ver 3D"}
               </button>
             </div>
-            {mode === "3d" && (
+            {loadingBatch ? <div className="world-loading" role="status">Carregando decisões do cenário…</div> : mode === "3d" && (
               <div className="world">
                 <World
                   events={batch.events}
                   ids={visible.map((d) => d.customerId)}
                   seed={sim.seed}
-                  onCycle={next}
                   focus={focus}
                 />
               </div>
             )}
+            <div className="sample-outcomes">
+              {(["buy", "undecided", "reject"] as const).map((d) => (
+                <div key={d} className={`sample-outcome ${d}`}>
+                  <span>{decisionNames[d]}</span><strong>{sampleTotals[d]} <small>/ {visible.length}</small></strong>
+                  <span>{visible.length ? (100 * sampleTotals[d] / visible.length).toFixed(1) : "0"}% da amostra</span>
+                </div>
+              ))}
+            </div>
+            <div className="replay-timeline">
+              <div><strong>{elapsed >= 14 ? "Distribuição concluída · avatares preservados" : elapsed < 5 ? "1. Aproximação e observação" : elapsed < 10 ? "2. Exibição das decisões" : "3. Organização por resultado"}</strong><span>{elapsed.toFixed(1)} / 14 s</span></div>
+              <input type="range" aria-label="Posição no replay" min="0" max="14" step="0.1" value={elapsed} onChange={(e) => seek(Number(e.target.value))} disabled={loadingBatch} />
+              <p>Os personagens permanecem no mapa. A amostra só muda quando você avança. Contagens mostram o resultado final desta amostra.</p>
+            </div>
             <div className="playback">
               <button
                 aria-label={playing ? "Pausar" : "Reproduzir"}
-                onClick={() => setPlaying(!playing)}
+                onClick={() => elapsed >= 14 ? restart() : setPlaying(!playing)}
               >
                 {playing ? <Pause size={16} /> : <Play size={16} />}
               </button>
@@ -258,21 +277,27 @@ export default function SimulationView({
               </select>
               <button
                 onClick={() => {
-                  setStart(0);
-                  setPage(0);
                   restart();
                 }}
               >
                 <RotateCcw size={15} />
-                Reiniciar
+                Rever amostra
               </button>
+              <button onClick={() => seek(14)}>Ver distribuição final</button>
               <button disabled={!chosen} onClick={() => setFocus(!focus)}>
                 <Focus size={15} />
                 {focus ? "Liberar câmera" : "Focar avatar"}
               </button>
-              <button onClick={next}>Próxima amostra →</button>
+              <button disabled={loadingBatch} onClick={next}>Próxima amostra →</button>
             </div>
           </Card>
+          {!chosen && <Card className="inspector inspector-empty">
+            <div className="eyebrow">INSPECIONAR PERFIL</div>
+            <h2>Entenda o motivo da decisão</h2>
+            <p>Clique em um personagem ou em um consumidor na tabela para consultar suas evidências.</p>
+            <ol><li>Observe a oferta no centro.</li><li>Acompanhe os perfis até as três áreas.</li><li>Selecione um perfil para comparar decisão e histórico.</li></ol>
+            <Notice>Esta amostra não é uma estimativa da população. Use os totais acima para analisar todos os perfis avaliados.</Notice>
+          </Card>}
           {chosen && (
             <Card className="inspector">
               <div className="section-title">
@@ -348,7 +373,7 @@ export default function SimulationView({
             </thead>
             <tbody>
               {visible.map((d) => (
-                <tr key={d.customerId}>
+                <tr key={d.customerId} className={selected === d.customerId ? "selected-decision" : ""}>
                   <td>
                     <button
                       className="text-button"
@@ -379,7 +404,7 @@ export default function SimulationView({
                       {decisionNames[d.decision]}
                     </Badge>
                   </td>
-                  <td>{d.affinityScore?.toFixed(2)} / 1</td>
+                  <td>{d.affinityScore === undefined ? "Desconhecida" : `${d.affinityScore.toFixed(2)} / 1`}</td>
                 </tr>
               ))}
             </tbody>
@@ -391,7 +416,7 @@ export default function SimulationView({
             filtro.
           </p>
         )}
-        <button onClick={next}>Próxima amostra →</button>
+        <button disabled={loadingBatch} onClick={next}>Próxima amostra →</button>
       </Card>
       <Card>
         {chosen && view !== "lab" && (

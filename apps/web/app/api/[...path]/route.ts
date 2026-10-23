@@ -1,3 +1,4 @@
+import { handleOfferChat, offerChatBusy } from "@/lib/offer-chat";
 import { assertEngineVersion } from "../../../../../packages/simulation-core/version";
 import { handleAgents } from "../../../../../services/agents/api";
 import { NextRequest, NextResponse, after } from "next/server";
@@ -108,6 +109,8 @@ async function handle(
       });
     if (path[0] === "agents")
       return handleAgents(req, workspace, path.slice(1));
+    if (action === "offer/chat" || action === "offer/transcribe")
+      return json(await handleOfferChat(req, workspace, action));
     if (action === "state") {
       const uploads = await list<{ createdAt: number }>(workspace, "upload");
       if (uploads.some((u) => Date.now() - u.createdAt > 3600000))
@@ -148,7 +151,7 @@ async function handle(
         simulations: await list<Simulation>(workspace, "simulation"),
         financials: await list<FinancialAnalysis>(workspace, "financial"),
         segmentDefinitions,
-        aiConfigured: !!process.env.OFFER_AI_URL,
+        aiConfigured: !!process.env.OPENAI_API_KEY,
       });
     }
     if (action === "financial" && req.method === "POST") {
@@ -421,7 +424,7 @@ async function handle(
       return json(sim);
     }
     if (action === "privacy/delete" && req.method === "POST") {
-      if (workspaceBusy(workspace))
+      if (workspaceBusy(workspace) || offerChatBusy(workspace))
         throw Error(
           "Aguarde o processamento terminar antes de excluir o workspace.",
         );

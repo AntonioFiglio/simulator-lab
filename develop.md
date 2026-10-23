@@ -170,20 +170,18 @@ Exemplos de perfis:
 
 ---
 
-### Passo C — Criar a nova oferta
+### Passo C — Construir a nova oferta por chat
 
-O usuário informa:
-- nome do produto/serviço;
-- descrição livre;
-- categoria;
-- preço;
-- custo estimado;
-- benefícios;
-- público-alvo desejado.
-
-Um **Offer Understanding Agent** converte isso em um `OfferSpec` estruturado.
-
-O usuário precisa revisar a interpretação da IA antes da execução.
+- Conversa curta com modelo fixo `gpt-4o-mini`, via Chat Completions com Structured Outputs e validação Zod. Prompt versionado em `packages/offer-understanding/chat.ts`.
+- Roteiro adaptativo: ideia/público/problema → tipo/categoria/benefícios → preço/custo opcional → ficha revisável. Meta de 3–5 interações, sem repetir informações nem inventar dados.
+- `OfferDraft`: campos de `OfferSpec` com desconhecidos representados por `null`; benefícios são uma lista, podendo estar vazia. Sugestões pendentes ficam separadas. Tipo e preço não recebem defaults inventados. Unidade/periodicidade ficam na descrição.
+- Ficha: nome, descrição livre, tipo, categoria, preço (R$), custo unitário opcional, benefícios por linha e público desejado opcional. Obrigatórios para confirmar: nome, descrição de ao menos 10 caracteres, tipo e preço não negativo. Categoria desconhecida não impede conclusão.
+- `GET /api/offer/chat`: recupera conversa atual do workspace. `POST /api/offer/chat`: mensagem, nova conversa ou confirmação explícita. Revisão numérica detecta alterações em outra aba. Confirmar não executa a simulação; ID estável por revisão evita duplicação em retries.
+- Registro `offer_chat/current` criptografado no Supabase. Mensagens só são persistidas junto com uma resposta válida; falhas preservam o histórico e o texto digitado. Edições manuais entram no próximo envio ou confirmação. Uma conversa atual por workspace, até 20 respostas do usuário.
+- `POST /api/offer/transcribe`: multipart autenticado, arquivo de até 8 MB (WebM/MP4/OGG/WAV/MP3), timeout de 30 s. MediaRecorder limita a gravação na interface a 60 s e libera o microfone ao parar/sair. Áudio não é persistido pela aplicação. A transcrição é editável e nunca enviada automaticamente ao chat.
+- `OPENAI_API_KEY` somente no servidor. `OFFER_TRANSCRIPTION_MODEL` configura a transcrição separadamente (default `gpt-4o-mini-transcribe`). Ausência de chave ou falha da IA é visível; não há resposta fictícia substituindo o modelo. Ficha manual permanece utilizável.
+- Limites: 4.000 caracteres por mensagem, 1.800 tokens de saída, 30 s por chamada e 60 chamadas de IA/hora/workspace, incluindo transcrições e tentativas. Lock em processo exige uma réplica, assim como o worker do MVP. Exclusão do workspace aguarda solicitações ativas e remove conversas/cotas junto dos demais registros.
+- O cliente nunca determina prompts de sistema nem fornece histórico com papéis arbitrários. Histórico observado e decisões da simulação não entram na conversa.
 
 ---
 
@@ -675,7 +673,7 @@ Se os dados não incluírem exposição ou não-compra, o sistema não deve prom
 ## 16. Ordem de implementação
 
 **Marco 1 — Dados:** ingestão, mapeamento, perfis e segmentos.  
-**Marco 2 — Oferta:** editor, interpretação por IA e revisão humana.  
+**Marco 2 — Oferta:** chat breve com GPT-4o-mini, voz transcrita e ficha com revisão humana.
 **Marco 3 — Decisão:** motor em lote, cenários e agregações.  
 **Marco 4 — 3D:** laboratório isométrico Habbo-like, avatares e replay.  
 **Marco 5 — Financeiro:** tela oficial do desafio 15 com os 3 cenários.  

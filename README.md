@@ -2,7 +2,7 @@
 
 MVP do simulador comercial com persistência exclusiva no Supabase descrito em `product.md`, `develop.md` e `agents.md`. Duas experiências separadas: **Financeiro / Hackathon 15** e **Consumer Lab**.
 
-**FÓRMULAS OFICIAIS PENDENTES.** Os documentos não contêm as fórmulas da organização. O motor disponível é demonstrativo e não representa homologação do desafio. A interpretação por IA externa depende da configuração de um provedor; sem configuração, a interface identifica explicitamente a estruturação local.
+**FÓRMULAS OFICIAIS PENDENTES.** Os documentos não contêm as fórmulas da organização. O motor disponível é demonstrativo e não representa homologação do desafio. O chat de nova oferta utiliza GPT-4o-mini e requer `OPENAI_API_KEY`; sem a chave, a ficha pode ser preenchida manualmente.
 
 ## Executar
 
@@ -30,12 +30,18 @@ npm start
 
 Pare `dev` antes de iniciar `start`. Os scripts mantêm o servidor restrito ao endereço local; a persistência é remota. Sem configuração válida, a API retorna erro 503 explicativo e não cria um banco alternativo.
 
+## Deploy na Vercel
+
+Mantenha o **Root Directory** na raiz do repositório (`.`), onde estão `package.json` e `vercel.json`. A configuração versionada define o framework Next.js, executa `npm run build` e informa **Output Directory: `apps/web/.next`**. O script compila `apps/web`; por isso a saída não fica em `.next` na raiz.
+
+Inclua `vercel.json` no commit enviado à Vercel. Isso corrige o erro de diretório de saída ausente em `/vercel/path0/.next`. Configure as variáveis de servidor no ambiente correspondente da Vercel.
+
 ## Jornada disponível
 
 1. **Financeiro:** informe um produto, um mês, preço unitário, quantidade vendida e custos totais mensais. Ajuste desconto e aumento de custos. Veja três cenários lado a lado, fórmulas, substituições, resultados e diferenças absolutas/relativas. Salve e recarregue análises.
 2. **Importação:** envie CSV, XLSX ou XML; revise a prévia e o mapeamento; escolha Brasil ou internacional. Exemplos fictícios nos três formatos estão disponíveis na tela e em `apps/web/public/examples/`.
 3. **População:** consulte qualidade, identificação, duplicatas, rejeições, segmentos e perfis com histórico. Transações sem cliente persistente aparecem agregadas por categoria e não são transformadas em indivíduos inventados.
-4. **Oferta:** preencha descrição livre, tipo, categoria, preço, custo opcional, benefícios e público pretendido. Estruture, confira lacunas/hipóteses e confirme a revisão humana.
+4. **Oferta:** converse por texto ou voz com GPT-4o-mini. Em cerca de 3–5 interações, revise a ficha editável com nome, descrição, tipo, categoria, preço, custo opcional, benefícios e público opcional. A transcrição aparece para revisão antes do envio. Confirme para configurar a simulação; ela não começa automaticamente.
 5. **Simulação:** escolha base, oferta revisada, população/segmentos e parâmetros. O motor processa lotes de 250 e registra uma decisão por cliente por cenário. A base demonstrativa gera **15.000 decisões: 5.000 × 3 cenários**.
 6. **Laboratório:** mundo isométrico original, até 36 avatares por amostra, reprodução das decisões persistidas, cartões de inventário apenas para aceitação, seleção/inspector, pausa, velocidade, foco e alternativa tabular. A seed controla a ordem visual; as decisões são determinísticas.
 7. **Resultados:** totais, aceitação sintética, comparação dos cenários, distribuição por segmento, cobertura, fontes e exportação JSON.
@@ -79,11 +85,19 @@ Motor `heuristic-evidence-v1`: pontuação base 0,50; categoria observada +0,20;
 - A exclusão do workspace é bloqueada enquanto seu worker está ativo, evitando recriação acidental de registros. Os registros são removidos do banco ativo; backups e retenção devem ser administrados pelo operador.
 - Para disponibilização externa: configure as credenciais do Supabase, `SIMULA_ENCRYPTION_KEY`, `SIMULA_ACCESS_PASSWORD` e proxy HTTPS. O MVP não deve ser publicado como serviço multiusuário de produção sem autenticação recuperável, gestão de papéis e fila distribuída.
 
-## IA opcional
+## IA e voz na nova oferta
 
-Copie `.env.example` para `apps/web/.env.local` e configure `OFFER_AI_URL`, `OFFER_AI_KEY` e `OFFER_AI_MODEL`. Reinicie o servidor. O endpoint deve aceitar `messages`, `response_format: {type: "json_object"}`, `temperature` e `max_tokens`, retornando `choices[0].message.content` com JSON contendo `inferredHypotheses` e `unknowns`.
+Configure `OPENAI_API_KEY` em `apps/web/.env.local` e reinicie o servidor. A conversa usa **GPT-4o-mini**, sem alteração automática do modelo. A transcrição usa `OFFER_TRANSCRIPTION_MODEL` (default `gpt-4o-mini-transcribe`) e é independente do modelo de conversa.
 
-O contrato `OfferProvider` é substituível. Apenas os campos escritos na oferta são enviados. Perfis, IDs e históricos não são enviados; não escreva PII na oferta. Há timeout de 20 segundos e limite de saída de 700 tokens por interpretação. A resposta passa por validação de esquema e revisão humana. Falha do provedor é visível, sem substituição silenciosa por suposta IA. Credenciais não são fornecidas nem incluídas neste repositório.
+Roteiro: ideia/problema/público → proposta → preço → revisão. O chat aproveita respostas anteriores e evita prolongar a conversa por custo ou público desconhecidos. A ficha pode ser corrigida diretamente; cada edição remove o aceite anterior. Confirmação cria uma oferta revisada e abre a configuração da simulação.
+
+Conversa e rascunho ficam criptografados no Supabase, isolados por workspace. Edite a ficha e envie uma mensagem ou confirme para persistir ajustes manuais. Nova conversa substitui o rascunho, sem apagar ofertas confirmadas. Áudio não é armazenado pela aplicação: é enviado à OpenAI para transcrição, apresentada ao usuário antes de enviar ao chat. Não inclua PII; históricos de clientes não são enviados.
+
+Limites: 60 s por gravação na interface, 8 MB por áudio, 4.000 caracteres por mensagem, 20 interações por conversa, 60 chamadas/hora/workspace e timeout de 30 s. Falhas preservam o texto para nova tentativa. Sem microfone, digite; sem chave, use a ficha manual. Execute uma réplica do servidor.
+
+O endpoint legado `offer/interpret` permanece compatível com `OFFER_AI_URL`, `OFFER_AI_KEY` e `OFFER_AI_MODEL`; ele não alimenta o novo chat. Credenciais nunca são entregues ao navegador.
+
+Referências: [Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs), [GPT-4o-mini](https://developers.openai.com/api/docs/models/gpt-4o-mini) e [transcrição](https://developers.openai.com/api/docs/guides/speech-to-text).
 
 ## Organização
 

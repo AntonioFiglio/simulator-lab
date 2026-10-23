@@ -63,10 +63,13 @@ Os papéis abaixo são responsabilidades de trabalho, **não** serviços de IA q
 
 ### 4.4 Offer Understanding Agent
 
-- Receber nome, descrição, categoria, preço, custo e benefícios declarados.
-- Produzir `OfferSpec` estruturado, com campos desconhecidos devidamente marcados.
-- Exibir interpretação para **revisão humana** antes da simulação.
-- Não criar benefícios, certificações, condições comerciais ou evidências inexistentes.
+- Conduzir chat breve com GPT-4o-mini: ideia/problema/público → proposta → preço → revisão. Buscar 3–5 interações sem repetir respostas nem exigir campos opcionais.
+- Receber texto ou voz; transcrever áudio separadamente e exigir revisão do texto antes de enviá-lo ao chat.
+- Produzir ficha editável: nome, descrição livre, tipo, categoria, preço, custo unitário opcional, benefícios por linha e público desejado opcional.
+- Marcar sugestões e desconhecidos; não inventar benefícios, certificações, condições comerciais, evidências nem valores. Custo desconhecido nunca é zero. Registrar unidade/periodicidade na descrição.
+- Preservar conversa e rascunho criptografados no Supabase por workspace. Não enviar históricos individuais à IA.
+- Exigir confirmação humana da ficha antes de criar uma oferta revisada. Alterações invalidam o aceite; confirmar apenas abre a configuração, sem iniciar simulação.
+- Manter erros de IA/microfone claros, credenciais no servidor e limites de chamadas. Não substituir falhas por respostas simuladas apresentadas como IA.
 
 ### 4.5 Simulation Engine Agent
 

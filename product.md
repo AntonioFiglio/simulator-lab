@@ -82,13 +82,17 @@ O sistema organiza os consumidores por características observáveis, por exempl
 
 Esses segmentos são etiquetas analíticas, **não diagnósticos de personalidade**. O usuário pode abrir cada perfil para ver de quais compras a classificação derivou.
 
-### Etapa 3 — Descrever uma nova oferta
+### Etapa 3 — Construir uma oferta em conversa
 
-Exemplo fictício:
+A tela **Nova oferta** é um chat com **GPT-4o-mini**, com respostas por texto ou voz. O assistente abre com: “Vou ajudar você a montar sua oferta rapidamente. O que deseja oferecer, para quem e qual problema pretende resolver?”.
 
-> “Quero lançar uma assinatura mensal de R$ 49 que oferece reposição automática de produtos de higiene pet, com facilidade para alterar a frequência.”
+O roteiro busca concluir em **3–5 interações**, sem impor uma quantidade fixa: entender a ideia → completar a proposta → definir valores → revisar a ficha. Aproveita informações já fornecidas, agrupa assuntos relacionados e não insiste em campos opcionais. Uma ideia completa pode ir diretamente à revisão. Sugestões são identificadas como sugestões; benefícios e preços não são inventados.
 
-O usuário informa nome, descrição, preço, custo, categoria e público pretendido. Um **agente de entendimento da oferta** identifica elementos relevantes e apresenta sua interpretação para revisão. Se faltar informação crítica, o sistema indica a lacuna, em vez de inventar fatos.
+A ficha final é editável e contém **nome da oferta, descrição livre, tipo (produto físico, digital, serviço ou assinatura), categoria, preço em reais, custo unitário opcional, benefícios declarados (um por linha) e público desejado opcional**. Unidade ou periodicidade da cobrança fica explícita na descrição. Valores desconhecidos não viram zero.
+
+Áudio é gravado por até 60 segundos, enviado para transcrição e apresentado como texto editável antes do envio ao chat. Texto e áudio são enviados à OpenAI com aviso visível; históricos de compradores não são enviados. Digitação permanece disponível se o microfone falhar.
+
+Conversa e rascunho são preservados no Supabase por workspace. Edições diretas da ficha são incorporadas no próximo envio ou na confirmação. A confirmação exige revisão humana explícita, salva a oferta e abre a configuração da simulação, sem executá-la. Nova conversa substitui o rascunho, preservando ofertas confirmadas.
 
 ### Etapa 4 — Configurar a simulação
 

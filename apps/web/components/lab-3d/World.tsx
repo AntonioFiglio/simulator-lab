@@ -41,7 +41,7 @@ type Props = {
   events: SimulationEvent[];
   ids: string[];
   seed: number;
-  onCycle: () => void;
+
   focus: boolean;
 };
 function Block({
@@ -63,13 +63,13 @@ function Block({
 function Avatar({
   events,
   index,
-  time,
+  slot,
   selected,
   onSelect,
 }: {
   events: SimulationEvent[];
   index: number;
-  time: React.RefObject<number>;
+  slot: number;
   selected: boolean;
   onSelect: () => void;
 }) {
@@ -78,36 +78,36 @@ function Avatar({
   const halo = useRef<Group>(null);
   const decision = events.find((e) => e.type === "DECISION_SHOWN")?.decision;
   useFrame(() => {
-    const t = time.current - index * 0.11;
+    const t = useReplay.getState().elapsed - index * 0.11;
     if (!group.current) return;
-    group.current.visible = t >= 0 && t < 10;
-    const lane = ((index % 6) - 2.5) * 0.5;
-    let x = -6 + lane,
-      z = 3 + (index % 4) * 0.35;
+    group.current.visible = true;
+    const lane = ((index % 6) - 2.5) * 0.65;
+    let x = lane,
+      z = 2 + Math.floor(index / 6) * 0.6;
     if (t > 1 && t < 3) {
       const u = (t - 1) / 2;
       x = x * (1 - u) + lane * u;
       z = z * (1 - u) + 0.7 * u;
     } else if (t >= 3 && t < 6.5) {
       x = lane;
-      z = 0.7 + (index % 3) * 0.35;
+      z = 0.7 + Math.floor(index / 6) * 0.6;
     } else if (t >= 6.5) {
       const u = Math.min(1, (t - 6.5) / 3.5),
-        target = decision === "buy" ? -4 : decision === "reject" ? 4 : 0;
+        target = (decision === "buy" ? -5 : decision === "reject" ? 5 : 0) + ((slot % 6) - 2.5) * 0.65;
       x = lane * (1 - u) + target * u;
-      z = 0.7 * (1 - u) - 3 * u;
+      z = (0.7 + Math.floor(index / 6) * 0.6) * (1 - u) + (-2 - Math.floor(slot / 6) * 0.65) * u;
     }
     group.current.position.set(
       x,
       0.17 +
-        ((t > 1 && t < 3) || t > 6.5 ? Math.abs(Math.sin(t * 9)) * 0.045 : 0),
+        ((t > 1 && t < 3) || (t > 6.5 && t < 10) ? Math.abs(Math.sin(t * 9)) * 0.045 : 0),
       z,
     );
     if (inventory.current)
-      inventory.current.visible = events.some(
+      inventory.current.visible = decision === "buy" && events.some(
         (e) => e.type === "INVENTORY_ITEM_ADDED" && e.at <= t * 1000,
       );
-    if (halo.current) halo.current.visible = t >= 5;
+    if (halo.current) halo.current.visible = events.some((e) => e.type === "DECISION_SHOWN" && e.at <= t * 1000);
   });
   return (
     <group
@@ -170,14 +170,19 @@ function Avatar({
     </group>
   );
 }
-function Scene({ events, ids, seed, onCycle, focus }: Props) {
-  const time = useRef(0);
+function Scene({ events, ids, seed, focus }: Props) {
   const controls = useRef<Controls>(null);
-  const { scene, camera, invalidate } = useThree();
-  const { playing, speed, selected, select, setPlaying, epoch } = useReplay();
-  useEffect(() => {
-    time.current = 0;
-  }, [ids.join(","), epoch]);
+  const { scene, camera, invalidate, size } = useThree();
+  const { playing, speed, selected, select, setPlaying, elapsed, tick } = useReplay();
+  useEffect(() => invalidate(), [elapsed, invalidate]);
+  const avatars = useMemo(() => {
+    const slots = { buy: 0, reject: 0, undecided: 0 };
+    return ids.map((id, index) => {
+      const ownEvents = events.filter((e) => e.customerId === id);
+      const decision = ownEvents.find((e) => e.type === "DECISION_SHOWN")?.decision;
+      return { id, events: ownEvents, index: (index + (seed % 7)) % ids.length, slot: decision ? slots[decision]++ : index };
+    });
+  }, [ids.join(","), events, seed]);
   useEffect(() => {
     if (!playing) return;
     const timer = setInterval(invalidate, 1000 / 30);
@@ -185,12 +190,12 @@ function Scene({ events, ids, seed, onCycle, focus }: Props) {
   }, [playing, invalidate]);
   useEffect(() => {
     if ("zoom" in camera) {
-      camera.zoom = focus ? 65 : 43;
+      camera.zoom = focus ? 65 : Math.min(38, size.width / 23, size.height / 18);
       camera.updateProjectionMatrix();
     }
     if (!focus) controls.current?.target.set(0, 0, 0);
     invalidate();
-  }, [focus, camera, invalidate]);
+  }, [focus, camera, invalidate, size.width, size.height]);
   useFrame((_, delta) => {
     if (focus && controls.current) {
       const avatar = scene.getObjectByName(selected);
@@ -199,11 +204,7 @@ function Scene({ events, ids, seed, onCycle, focus }: Props) {
       controls.current.update();
     }
     if (!playing) return;
-    time.current += Math.min(delta, 0.1) * speed;
-    if (time.current > 15) {
-      time.current = 0;
-      onCycle();
-    }
+    tick(Math.min(delta, 0.1) * speed);
   });
   return (
     <>
@@ -211,7 +212,7 @@ function Scene({ events, ids, seed, onCycle, focus }: Props) {
       <ambientLight intensity={1.4} />
       <directionalLight position={[8, 15, 6]} intensity={2} />
       <group>
-        <Block position={[0, -0.25, 0]} size={[15, 0.5, 12]} color="#dce9e3" />
+        <Block position={[0, -0.25, 0]} size={[16, 0.5, 14]} color="#dce9e3" />
         <Instances limit={180}>
           <boxGeometry args={[0.96, 0.04, 0.96]} />
           <meshStandardMaterial roughness={0.9} />
@@ -249,14 +250,14 @@ function Scene({ events, ids, seed, onCycle, focus }: Props) {
         {(["buy", "undecided", "reject"] as const).map((d, i) => (
           <group key={d}>
             <Block
-              position={[(i - 1) * 4, 0.09, -3]}
-              size={[3, 0.12, 2]}
+              position={[(i - 1) * 5, 0.09, -3.6]}
+              size={[4.4, 0.12, 4.5]}
               color={
                 d === "buy" ? "#c3e5d3" : d === "reject" ? "#ecd1ca" : "#eee0bb"
               }
             />
             <Label
-              position={[(i - 1) * 4, 0.5, -4.3]}
+              position={[(i - 1) * 5, 1.6, -6]}
               color={colors[d]}
               text={
                 d === "buy"
@@ -268,8 +269,8 @@ function Scene({ events, ids, seed, onCycle, focus }: Props) {
             />
           </group>
         ))}
-        {[-6.3, 6.3].map((x) =>
-          [-4, 1, 4].map((z) => (
+        {[-7.3, 7.3].map((x) =>
+          [1, 4].map((z) => (
             <group key={x + ":" + z}>
               <Block
                 position={[x, 0.3, z]}
@@ -289,12 +290,12 @@ function Scene({ events, ids, seed, onCycle, focus }: Props) {
             </group>
           )),
         )}
-        {ids.map((id, index) => (
+        {avatars.map(({ id, events: ownEvents, index, slot }) => (
           <Avatar
             key={id}
-            events={events.filter((e) => e.customerId === id)}
-            index={(index + (seed % 7)) % ids.length}
-            time={time}
+            events={ownEvents}
+            index={index}
+            slot={slot}
             selected={selected === id}
             onSelect={() => {
               select(id);

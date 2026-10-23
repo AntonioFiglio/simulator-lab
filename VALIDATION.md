@@ -25,3 +25,17 @@ A inicialização do Chromium passou para o bloco de tratamento de erros, com li
 Foram acrescentados nove testes de regressão em `tests/executor-errors.test.ts`. Eles verificam falha de inicialização, medições negativas/fracionárias/não numéricas, valores excessivos e soma além do limite. Cada resultado é enviado ao handler real de `/result` com armazenamento controlado, que registra `failed` e permite preparar outro lote. Os oito primeiros casos reproduziram os defeitos antes da correção.
 
 Revalidação: `npm test` passou com 21 testes; `npm run typecheck`, `npm run build` e `git diff --check` passaram. As 14 verificações autenticadas no Supabase foram repetidas com sucesso. Uma prova adicional com cinco falhas controladas do executor confirmou persistência no Supabase real, preservação dos totais válidos e liberação de outro lote; o workspace dessa prova foi excluído ao final. Os smokes de seis telas com dados simulados e cinco telas autenticadas também passaram após reinício com o modo desativado. Chamadas a IA externa continuam adiadas conforme combinado.
+
+## Nova oferta por chat — 23/10/2026
+
+Implementado GPT-4o-mini com saída estruturada, roteiro curto, ficha editável e revisão humana. Documentos de produto, desenvolvimento, agentes e README atualizados. Áudio é transcrito separadamente e apresentado para edição antes do envio.
+
+Verificações realizadas nesta alteração:
+
+- Chamadas reais ao GPT-4o-mini: descrição completa gerou ficha pronta; correção de preço preservou benefício e custo desconhecido; ideia vaga gerou pergunta de esclarecimento sem inventar preço.
+- Transcrição real de áudio sintético em português pelo endpoint autenticado retornou o texto esperado. Isso valida a integração de transcrição, não a captura física do microfone.
+- Supabase real: recarga, preservação do histórico em erro de IA, rejeição de ficha sem preço, confirmação idempotente, reset e revisão conflitante entre abas.
+- API sem sessão recusada; arquivo com tipo inválido rejeitado. Dados temporários de validação removidos.
+- Build e TypeScript verificados. Contrato da resposta inválida também exercitado com resposta controlada, sem nova suíte automatizada.
+
+Limite: a inspeção visual e a permissão/captura do microfone no navegador não foram concluídas porque o controle do Chrome foi interrompido por uso simultâneo. A interface mantém digitação, mensagens de erro e liberação do microfone ao sair.
