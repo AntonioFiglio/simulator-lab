@@ -10,7 +10,7 @@ export default function Setup({
 }: {
   datasets: any[];
   offers: OfferSpec[];
-  refresh: () => void;
+  refresh: () => Promise<void>;
   navigate: (p: string) => void;
 }) {
   const [datasetId, setDataset] = useState(datasets.at(-1)?.id ?? "");
@@ -172,7 +172,7 @@ export default function Setup({
                     costIncrease,
                     seed,
                   });
-                  refresh();
+                  await refresh();
                   navigate(`/simulations/${sim.id}/lab`);
                 } catch (e) {
                   setError((e as Error).message);

@@ -15,7 +15,7 @@ export default function DataImport({
   refresh,
   navigate,
 }: {
-  refresh: () => void;
+  refresh: () => Promise<void>;
   navigate: (s: string) => void;
 }) {
   const [preview, setPreview] = useState<any>();
@@ -167,7 +167,7 @@ export default function DataImport({
                     mapping,
                     locale,
                   });
-                  refresh();
+                  await refresh();
                   navigate("/customers");
                 } catch (e) {
                   setError((e as Error).message);
@@ -216,7 +216,7 @@ export default function DataImport({
             setBusy(true);
             try {
               await api("demo", {});
-              refresh();
+              await refresh();
               navigate("/customers");
             } catch (e) {
               setError((e as Error).message);

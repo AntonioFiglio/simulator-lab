@@ -9,7 +9,7 @@ export default function Offer({
   navigate,
 }: {
   aiConfigured: boolean;
-  refresh: () => void;
+  refresh: () => Promise<void>;
   navigate: (p: string) => void;
 }) {
   const [draft, setDraft] = useState({
@@ -227,7 +227,7 @@ export default function Offer({
                   setBusy(true);
                   try {
                     await api("offer/review", { ...spec, humanReviewed: true });
-                    refresh();
+                    await refresh();
                     navigate("/simulations/new");
                   } catch (e) {
                     setError((e as Error).message);

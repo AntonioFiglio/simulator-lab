@@ -1,4 +1,5 @@
 import "./globals.css";
+import App from "@/components/App";
 export const metadata = {
   title: "Simula — Consumer Simulation Lab",
   description:
@@ -7,7 +8,10 @@ export const metadata = {
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-BR">
-      <body>{children}</body>
+      <body>
+        <App />
+        {children}
+      </body>
     </html>
   );
 }

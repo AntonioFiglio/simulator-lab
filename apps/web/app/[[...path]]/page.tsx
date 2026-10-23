@@ -1,4 +1,4 @@
-import App from "@/components/App";
 export default function Page() {
-  return <App />;
+  // The shared layout keeps the workspace mounted across route changes.
+  return null;
 }
