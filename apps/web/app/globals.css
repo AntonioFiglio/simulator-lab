@@ -1515,3 +1515,9 @@ footer {
 .selected-decision { background: #e9f6ef; }
 @media (max-width: 1250px) { .simulation-lab-layout { grid-template-columns: minmax(0, 1fr); } .simulation-lab-layout .inspector { max-height: none; } }
 @media (max-width: 600px) { .simulation-lab-layout .world { height: 420px; } .sample-outcome { padding: 10px; font-size: 11px; } .sample-outcome strong { font-size: 22px; } .replay-timeline > div { flex-wrap: wrap; } }
+.simulation-history { display: grid; gap: 12px; max-height: 480px; overflow: auto; }
+.simulation-history article { display: grid; grid-template-columns: minmax(160px, 1fr) auto; gap: 16px; padding: 20px; background: #f6f9f7; border: 1px solid var(--border); border-radius: 12px; }
+.simulation-history h3 { margin: 0 0 8px; }
+.history-decisions { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; align-items: center; }
+.simulation-history .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+@media (max-width: 700px) { .simulation-history article { grid-template-columns: 1fr; } }

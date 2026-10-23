@@ -1,14 +1,16 @@
 "use client";
 import { useState } from "react";
-import type { OfferSpec } from "@packages/contracts";
+import type { OfferSpec, Simulation } from "@packages/contracts";
 import { api, Card, Field, Badge, Empty, Notice, count, money } from "./ui";
 export default function Setup({
   datasets,
+  simulations,
   offers,
   refresh,
   navigate,
 }: {
   datasets: any[];
+  simulations: Simulation[];
   offers: OfferSpec[];
   refresh: () => Promise<void>;
   navigate: (p: string) => void;
@@ -47,11 +49,27 @@ export default function Setup({
       <div className="page-heading">
         <div>
           <div className="eyebrow">CONSUMER LAB / CONFIGURAÇÃO</div>
-          <h1>Transforme a hipótese em uma simulação.</h1>
-          <p>Três cenários, a mesma população e razões rastreáveis.</p>
+          <h1>Suas simulações, do cenário à evidência.</h1>
+          <p>Retome uma análise ou configure uma nova hipótese para a sua população.</p>
         </div>
-        <Badge>Motor explicável v1</Badge>
+        <Badge>{count(simulations.length)} simulações</Badge>
       </div>
+      {simulations.length > 0 && <Card>
+        <div className="section-title"><h2>Explorar simulações</h2><span className="muted">Resultados sintéticos salvos</span></div>
+        <div className="simulation-history">
+          {[...simulations].reverse().map((simulation) => {
+            const a = simulation.aggregates.current;
+            const evaluated = a.buy + a.reject + a.undecided;
+            return <article key={simulation.id}>
+              <div><h3>{simulation.offer.title}</h3><span className="muted">{count(evaluated)} / {count(simulation.total)} perfis avaliados</span></div>
+              <Badge tone={simulation.status === "completed" ? "green" : "amber"}>{simulation.status === "completed" ? "Concluída" : simulation.status === "partial_failure" ? "Falha parcial" : "Em processamento"}</Badge>
+              <div className="history-decisions"><span>{count(a.buy)} aceitam</span><span>{count(a.reject)} rejeitam</span><span>{count(a.undecided)} indecisos</span></div>
+              <div className="actions"><button className="primary" onClick={() => navigate(`/simulations/${simulation.id}/lab`)}>Explorar laboratório →</button><button onClick={() => navigate(`/simulations/${simulation.id}/results`)}>Ver evidências</button></div>
+            </article>;
+          })}
+        </div>
+      </Card>}
+      <div className="section-title"><div><div className="eyebrow">NOVA SIMULAÇÃO</div><h2>Configure a próxima hipótese</h2></div><span className="muted">1. População e oferta → 2. Premissas → 3. Exploração</span></div>
       {error && (
         <div className="error" role="alert">
           {error}

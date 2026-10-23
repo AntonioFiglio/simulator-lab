@@ -37,6 +37,7 @@ export default function SimulationView({
   const [segment, setSegment] = useState("");
   const [mode, setMode] = useState("3d");
   const [focus, setFocus] = useState(false);
+  const [batchKey, setBatchKey] = useState("");
   const [loadingBatch, setLoadingBatch] = useState(false);
   const [error, setError] = useState("");
   const [batch, setBatch] = useState<{
@@ -69,7 +70,7 @@ export default function SimulationView({
       setLoadingBatch(true);
       api(`simulation/${id}/replay?scenario=${scenario}&start=${start}`)
         .then((b) => {
-          if (active) { setBatch(b); setLoadingBatch(false); }
+          if (active) { setBatch(b); setBatchKey(`${id}/${scenario}/${start}`); setLoadingBatch(false); setError(""); }
         })
         .catch((e) => { if (active) { setError(e.message); setLoadingBatch(false); } });
     }
@@ -77,7 +78,8 @@ export default function SimulationView({
       active = false;
     };
   }, [id, scenario, start, sim?.processed]);
-  const filtered = batch.decisions.filter(
+  const activeDecisions = batchKey === `${id}/${scenario}/${start}` ? batch.decisions : [];
+  const filtered = activeDecisions.filter(
     (d) =>
       !segment ||
       batch.profiles.find((p) => p.id === d.customerId)?.segmentId === segment,
@@ -94,7 +96,7 @@ export default function SimulationView({
   const totals = sim.aggregates[scenario],
     total = totals.buy + totals.reject + totals.undecided;
   const visible = filtered.slice(page, page + 36);
-  const chosen = batch.decisions.find((d) => d.customerId === selected);
+  const chosen = activeDecisions.find((d) => d.customerId === selected);
   const segments = [...new Set(batch.profiles.map((p) => p.segmentId ?? ""))];
   const sampleTotals = visible.reduce((a, d) => { a[d.decision]++; return a; }, { buy: 0, reject: 0, undecided: 0 });
   return (

@@ -174,6 +174,7 @@ export default function App() {
   else if (pathname === "/simulations/new")
     content = (
       <Setup
+        simulations={state.simulations}
         datasets={state.datasets}
         offers={state.offers}
         refresh={refresh}
