@@ -23,20 +23,20 @@ function Label({
     ctx.fillStyle = "rgba(255,255,255,.92)";
     ctx.fillRect(0, 0, 512, 80);
     ctx.fillStyle = color;
-    ctx.font = "bold 25px sans-serif";
+    ctx.font = "bold 40px sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText(text, 256, 40);
+    ctx.fillText(text, 256, 40, 480);
     return new CanvasTexture(canvas);
   }, [text, color]);
   useEffect(() => () => texture.dispose(), [texture]);
   return (
-    <sprite position={position} scale={[2.8, 0.44, 1]}>
+    <sprite position={position} scale={[4, 0.625, 1]}>
       <spriteMaterial map={texture} transparent depthTest={false} />
     </sprite>
   );
 }
-const colors = { buy: "#43ab87", reject: "#d97872", undecided: "#deb85c" };
+const colors = { buy: "#17664e", reject: "#a33e37", undecided: "#876015" };
 type Props = {
   events: SimulationEvent[];
   ids: string[];

@@ -352,7 +352,7 @@ export default function SimulationView({
           )}
         </div>
       )}
-      <Card>
+      <Card className="decisions-card">
         <div className="section-title">
           <h2>
             {view === "lab"

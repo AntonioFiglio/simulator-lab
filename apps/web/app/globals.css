@@ -1521,3 +1521,5 @@ footer {
 .history-decisions { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; align-items: center; }
 .simulation-history .actions { display: flex; gap: 8px; flex-wrap: wrap; }
 @media (max-width: 700px) { .simulation-history article { grid-template-columns: 1fr; } }
+.decisions-card .table-wrap { max-height: 480px; overflow: auto; }
+.decisions-card thead { position: sticky; top: 0; background: var(--surface); z-index: 1; }
