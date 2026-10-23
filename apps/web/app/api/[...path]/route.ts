@@ -78,7 +78,7 @@ async function handle(
         { status: 401 },
       );
     const workspace = digest(token);
-    const info = await get(workspace, "workspace", "info");
+    const info = await get<{ name: string }>(workspace, "workspace", "info");
     if (!info)
       return NextResponse.json(
         { error: "Workspace indisponível." },
@@ -201,6 +201,16 @@ async function handle(
       await put(workspace, "dataset", dataset.id, dataset);
       await remove(workspace, "upload");
       return json({ id: dataset.id });
+    }
+    if (action === "preset" && req.method === "POST") {
+      const existing = await list<Dataset>(workspace, "dataset");
+      if (existing.length || info.name.trim() !== "Meu laboratório")
+        return json({ created: false });
+      const dataset = demoDataset(workspace);
+      // A fixed ID keeps repeated initialization requests from creating extra bases.
+      dataset.id = "preset-demo-v1";
+      await put(workspace, "dataset", dataset.id, dataset);
+      return json({ created: true, id: dataset.id });
     }
     if (action === "demo" && req.method === "POST") {
       const dataset = demoDataset(workspace);

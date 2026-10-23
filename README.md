@@ -20,7 +20,7 @@ npm run dev
 
 Se preferir Yarn, use `yarn install` e `yarn dev`. A configuração `.yarnrc.yml` usa `node-modules` para compatibilidade com o Turbopack.
 
-Abra http://127.0.0.1:3000. Crie um workspace e use **Importar dados → Carregar demonstração** para trabalhar com 5.000 perfis fictícios. A base demonstrativa é armazenada no seu projeto Supabase. Nenhum perfil é enviado a provedores de IA.
+Abra http://127.0.0.1:3000. O workspace **Meu laboratório**, quando ainda não possui bases, recebe automaticamente um preset com 5.000 perfis fictícios ao abrir a aplicação. Bases existentes são preservadas. Outros workspaces podem usar **Importar dados → Carregar demonstração**. A base demonstrativa é armazenada no seu projeto Supabase. Nenhum perfil é enviado a provedores de IA.
 
 ```sh
 npm run typecheck

@@ -58,7 +58,13 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const refresh = useCallback(async () => {
     try {
-      setState(await api("state"));
+      let nextState: State = await api("state");
+      setState(nextState);
+      if (nextState.workspace.name.trim() === "Meu laboratório" && !nextState.datasets.length) {
+        await api("preset", {});
+        nextState = await api("state");
+        setState(nextState);
+      }
       setError("");
     } catch (e) {
       setError((e as Error).message);
