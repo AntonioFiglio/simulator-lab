@@ -1,42 +1,59 @@
 "use client";
 import { useState } from "react";
 import { Calculator, ArrowRight, Save } from "lucide-react";
-import { calculateFinancial } from "@packages/financial-engine";
+import { calculateFinancial, financialSchema } from "@packages/financial-engine";
 import {
   scenarioLabels,
   type FinancialAnalysis,
   type FinancialInput,
+  type Simulation,
 } from "@packages/contracts";
 import { Card, Field, Badge, Notice, money, api } from "./ui";
+type FinancialDraft = Omit<FinancialInput, "quantity" | "cost" | "discount" | "costIncrease"> & {
+  quantity: number | ""; cost: number | ""; discount: number | ""; costIncrease: number | "";
+};
 export default function Financial({
   saved,
   onSave,
+  simulation,
 }: {
   saved: FinancialAnalysis[];
   onSave: () => void;
+  simulation?: Simulation;
 }) {
-  const [input, setInput] = useState<FinancialInput>({
-    product: "",
-    month: "2026-10",
-    price: 0,
-    quantity: 0,
-    cost: 0,
-    discount: 10,
-    costIncrease: 15,
+  const relevantSaved = saved.filter((s) => simulation ? s.simulationId === simulation.id : !s.simulationId);
+  const [input, setInput] = useState<FinancialDraft>(() => {
+    const latest = simulation ? [...relevantSaved].sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0] : undefined;
+    if (latest) return latest.input;
+    const current = simulation?.scenarios.find((s) => s.id === "current");
+    const discounted = simulation?.scenarios.find((s) => s.id === "discount");
+    const increased = simulation?.scenarios.find((s) => s.id === "cost_increase");
+    const percent = (value: number) => Math.round(value * 10000) / 10000;
+    return {
+      product: simulation?.offer.title ?? "",
+      month: simulation?.createdAt.slice(0, 7) ?? new Date().toISOString().slice(0, 7),
+      price: current?.price ?? simulation?.offer.price ?? 0,
+      quantity: simulation ? "" : 0,
+      cost: simulation ? "" : 0,
+      discount: simulation ? simulation.financialParameters?.discount ??
+        (current && current.price > 0 && discounted ? percent((1 - discounted.price / current.price) * 100) : "") : 10,
+      costIncrease: simulation ? simulation.financialParameters?.costIncrease ??
+        (current?.unitCost && increased?.unitCost !== undefined ? percent((increased.unitCost / current.unitCost - 1) * 100) : "") : 15,
+    };
   });
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   let scenarios: ReturnType<typeof calculateFinancial> = [];
   try {
-    scenarios = calculateFinancial({
+    scenarios = calculateFinancial(financialSchema.parse({
       ...input,
       product: input.product || "Produto",
-    });
+    }));
   } catch {}
   const update = (key: keyof FinancialInput, v: string) =>
     setInput((i) => ({
       ...i,
-      [key]: key === "product" || key === "month" ? v : Number(v),
+      [key]: key === "product" || key === "month" || v === "" ? v : Number(v),
     }));
   return (
     <>
@@ -55,6 +72,12 @@ export default function Financial({
         − custos totais mensais. Regras provisórias, substituíveis pelas
         fórmulas da organização.
       </Notice>
+      {simulation && <Notice>
+        Oferta desta simulação: <strong>{simulation.offer.title}</strong>. Preço e cenários vêm da execução;
+        o mês sugerido é o mês de criação. Informe a quantidade mensal e os custos totais.
+        Valores desconhecidos ficam em branco. Nenhuma compra sintética é tratada como venda observada.
+        {simulation.offer.unitCost !== undefined && <> Custo unitário informado: {money(simulation.offer.unitCost)}; não equivale ao custo total mensal.</>}
+      </Notice>}
       <Card>
         <div className="section-title">
           <h2>
@@ -64,12 +87,12 @@ export default function Financial({
             aria-label="Análises salvas"
             defaultValue=""
             onChange={(e) => {
-              const s = saved.find((s) => s.id === e.target.value);
+              const s = relevantSaved.find((s) => s.id === e.target.value);
               if (s) setInput(s.input);
             }}
           >
             <option value="">Carregar análise salva</option>
-            {saved.map((s) => (
+            {relevantSaved.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.input.product} · {s.input.month}
               </option>
@@ -103,6 +126,7 @@ export default function Financial({
                 min="0"
                 step={key === "quantity" ? "1" : ".01"}
                 value={input[key as "price"]}
+                placeholder="Não informado"
                 onChange={(e) =>
                   update(key as keyof FinancialInput, e.target.value)
                 }
@@ -116,6 +140,18 @@ export default function Financial({
           entra neste cálculo.
         </p>
       </Card>
+      {!scenarios.length && <Card>
+        <h2>Parâmetros dos cenários</h2>
+        <div className="form-grid">
+          {([['discount', 'Desconto comercial (%)'], ['costIncrease', 'Aumento de custos (%)']] as const).map(([key, label]) => (
+            <Field key={key} label={label}>
+              <input type="number" min="0" max={key === "discount" ? 100 : 1000} step="any"
+                placeholder="Não informado" value={input[key]}
+                onChange={(e) => update(key, e.target.value)} />
+            </Field>
+          ))}
+        </div>
+      </Card>}
       <div className="scenario-grid">
         {scenarios.map((s, index) => (
           <Card
@@ -277,7 +313,7 @@ export default function Financial({
           onClick={async () => {
             setBusy(true);
             try {
-              await api("financial", input);
+              await api("financial", { ...financialSchema.parse(input), simulationId: simulation?.id });
               setMessage("Análise salva com entradas, fórmulas e resultados.");
               onSave();
             } catch (e) {

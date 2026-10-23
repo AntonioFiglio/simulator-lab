@@ -149,7 +149,10 @@ export default function App() {
   const currentNav = nav.find((n) => n.path === pathname);
   let content;
   if (pathname === "/financials" || match?.[2] === "financials")
-    content = <Financial saved={state.financials} onSave={refresh} />;
+    content = match && !state.simulations.some((s) => s.id === match[1])
+      ? <Notice>Simulação não encontrada neste workspace.</Notice>
+      : <Financial key={match?.[1] ?? "standalone"} saved={state.financials} onSave={refresh}
+          simulation={match ? state.simulations.find((s) => s.id === match[1]) : undefined} />;
   else if (pathname === "/agents") content = <Agents />;
   else if (pathname === "/data/import")
     content = <DataImport refresh={refresh} navigate={navigate} />;

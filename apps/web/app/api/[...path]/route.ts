@@ -139,9 +139,14 @@ async function handle(
       });
     }
     if (action === "financial" && req.method === "POST") {
-      const input = financialSchema.parse(await req.json());
+      const body = await req.json();
+      const input = financialSchema.parse(body);
+      const simulationId = z.string().uuid().optional().parse(body.simulationId);
+      if (simulationId && !await get<Simulation>(workspace, "simulation", simulationId))
+        throw Error("Simulação não encontrada neste workspace.");
       const result: FinancialAnalysis = {
         id: randomUUID(),
+        simulationId,
         input,
         scenarios: calculateFinancial(input),
         ruleVersion: provisionalRule.version,
@@ -316,6 +321,7 @@ async function handle(
         processed: 0,
         total,
         createdAt: new Date().toISOString(),
+        financialParameters: { discount: body.discount, costIncrease: body.costIncrease },
         scenarios: [
           {
             id: "current",

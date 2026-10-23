@@ -110,6 +110,7 @@ export type FinancialScenario = {
 };
 export type FinancialAnalysis = {
   id: string;
+  simulationId?: string;
   input: FinancialInput;
   scenarios: FinancialScenario[];
   ruleVersion: string;
@@ -130,6 +131,7 @@ export type Simulation = {
   total: number;
   error?: string;
   createdAt: string;
+  financialParameters?: { discount: number; costIncrease: number };
   scenarios: { id: string; name: string; price: number; unitCost?: number }[];
   segmentAggregates?: Record<string, Record<string, Record<Decision, number>>>;
   aggregates: Record<string, Record<Decision, number>>;
