@@ -1,10 +1,11 @@
-import { chromium } from "playwright";
+import { chromium, type Browser } from "playwright";
 import { readFile, mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import {
   actionSchema,
   agentVersion,
   evaluate,
+  resultSchema,
   type AgentAction,
   type TrialRun,
 } from "../../packages/agent-runtime";
@@ -21,7 +22,7 @@ export async function runBrowserTrial(
   maxSteps = 20,
   timeoutMs = 120000,
 ) {
-  const browser = await chromium.launch({ headless: true });
+  let browser: Browser | undefined;
   const started = Date.now();
   let tokens = 0;
   let outcome = "action_limit";
@@ -30,9 +31,11 @@ export async function runBrowserTrial(
   let timedOut = false;
   const timer = setTimeout(() => {
     timedOut = true;
-    void browser.close();
+    void browser?.close().catch(() => {});
   }, timeoutMs);
   try {
+    browser = await chromium.launch({ headless: true, timeout: timeoutMs });
+    if (timedOut) throw Error("Tempo de execução excedido.");
     const page = await browser.newPage();
     await mkdir(artifacts, { recursive: true });
     const html = await readFile(resolve("tests/fixtures/booking.html"), "utf8");
@@ -64,9 +67,13 @@ export async function runBrowserTrial(
           .then(JSON.stringify));
       const answer = await next(observation.slice(0, 6000), 12000 - tokens);
       const action = actionSchema.parse(answer.action);
-      tokens += answer.tokens;
-      if (!Number.isSafeInteger(answer.tokens) || answer.tokens < 0)
+      if (
+        !Number.isSafeInteger(answer.tokens) ||
+        answer.tokens < 0 ||
+        !resultSchema.shape.tokens.safeParse(tokens + answer.tokens).success
+      )
         throw Error("Medição inválida.");
+      tokens += answer.tokens;
       if (tokens > 12000) {
         outcome = "token_limit";
         break;
@@ -118,7 +125,12 @@ export async function runBrowserTrial(
       : "Falha do executor ou provedor; consulte a configuração.";
   } finally {
     clearTimeout(timer);
-    await browser.close();
+    try {
+      await browser?.close();
+    } catch {
+      outcome = "executor_error";
+      error ??= "Falha ao encerrar o navegador.";
+    }
   }
   return {
     outcome,
